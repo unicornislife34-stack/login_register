@@ -37,7 +37,7 @@ if ($action === 'clock_in') {
     
 } elseif ($action === 'clock_out') {
     // Find today's open record
-    $check = $conn->prepare("SELECT id FROM attendance WHERE employee_username = ? AND date = ? AND clock_out IS NULL");
+    $check = $conn->prepare("SELECT id FROM attendance WHERE employee_username = ? AND date = ? AND (clock_out IS NULL OR clock_out = '0000-00-00 00:00:00')");
     $check->bind_param('ss', $username, $date);
     $check->execute();
     $result = $check->get_result();
@@ -67,9 +67,9 @@ if ($action === 'clock_in') {
     $result = $stmt->get_result();
     $record = $result->fetch_assoc();
     
-    if ($record && $record['clock_in'] && !$record['clock_out']) {
+    if ($record && $record['clock_in'] && (!$record['clock_out'] || $record['clock_out'] === '0000-00-00 00:00:00')) {
         echo json_encode(['status' => 'in', 'clock_in' => $record['clock_in']]);
-    } elseif ($record && $record['clock_in'] && $record['clock_out']) {
+    } elseif ($record && $record['clock_in'] && $record['clock_out'] && $record['clock_out'] !== '0000-00-00 00:00:00') {
         echo json_encode(['status' => 'out', 'clock_in' => $record['clock_in'], 'clock_out' => $record['clock_out']]);
     } else {
         echo json_encode(['status' => 'none']);
