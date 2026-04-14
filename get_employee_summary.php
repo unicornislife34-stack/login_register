@@ -1,5 +1,5 @@
 <?php
-// get_employee_summary.php
+// get_employee_summary.php ORIGINAL
 header('Content-Type: application/json');
 include 'config.php';
 
@@ -9,7 +9,6 @@ if (!$employee_id) {
     exit;
 }
 
-// Get summary for the last 30 days
 $summary = [
     "Employee" => "",
     "Present" => 0,
@@ -35,3 +34,5 @@ while ($row = $res->fetch_assoc()) {
 }
 
 echo json_encode($summary);
+?>
+
