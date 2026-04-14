@@ -1,0 +1,1 @@
+<?php\ninclude 'config.php';\n\n// Supplier & history table setup\n// This file is optional: run once to create or check tables.\n?>
