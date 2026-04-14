@@ -70,6 +70,24 @@ if (mysqli_query($conn, $employee_sql)) {
     $error_messages[] = "Error creating employee table: " . mysqli_error($conn);
 }
 
+// SQL to create attendance table
+$attendance_sql = "CREATE TABLE IF NOT EXISTS attendance (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    employee_username VARCHAR(100) NOT NULL,
+    clock_in DATETIME NULL,
+    clock_out DATETIME NULL,
+    date DATE NOT NULL,
+    break_started DATETIME NULL,
+    break_total INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)";
+
+if (mysqli_query($conn, $attendance_sql)) {
+    $success_messages[] = "✓ Attendance table created successfully!";
+} else {
+    $error_messages[] = "Error creating attendance table: " . mysqli_error($conn);
+}
+
 // Create uploads directories if they don't exist
 if (!is_dir('uploads')) {
     mkdir('uploads', 0755);

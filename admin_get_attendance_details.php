@@ -1,5 +1,5 @@
 <?php
-// admin_get_attendance_details.php
+// admin_get_attendance_details.php ORIGINAL
 header('Content-Type: application/json');
 include 'config.php';
 
@@ -16,8 +16,8 @@ $details = [];
 while ($row = $res->fetch_assoc()) {
     $details[] = [
         'date' => $row['date'],
-        'clock_in' => '', // Not available in your table
-        'clock_out' => '', // Not available in your table
+        'clock_in' => '',
+        'clock_out' => '',
         'status' => $row['status'],
         'hours_spent' => $row['hours_spent'],
         'remarks' => $row['remarks'],
@@ -26,3 +26,5 @@ while ($row = $res->fetch_assoc()) {
     ];
 }
 echo json_encode(["details" => $details]);
+?>
+

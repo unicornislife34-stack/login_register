@@ -16,239 +16,524 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
     <title>Employee Page</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             min-height: 100vh;
-            margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #fff;
+            background: linear-gradient(135deg, #e0f2fe 0%, #e9d5ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #1f2937;
         }
         .container {
-            max-width: 920px;
-            margin: 40px auto;
-            padding: 32px;
-            background: rgba(255,255,255,0.12);
-            border-radius: 24px;
-            box-shadow: 0 20px 80px rgba(0,0,0,0.24);
-            backdrop-filter: blur(18px);
-            border: 1px solid rgba(255,255,255,0.15);
+            width: 100%;
+            max-width: 520px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+            padding: 40px 32px;
         }
         h1 {
-            margin-bottom: 12px;
-            font-size: 2.3rem;
-            letter-spacing: 0.02em;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1f2937;
         }
-        p {
-            margin-top: 0;
-            font-size: 1rem;
-            color: #e5ecff;
-            max-width: 760px;
+        .subtitle {
+            font-size: 0.95rem;
+            color: #6b7280;
+            margin-bottom: 32px;
             line-height: 1.6;
         }
         #employee-menu {
-            margin: 32px 0;
             display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
         }
         .btn-action {
-            flex: 1 1 240px;
-            padding: 16px 24px;
+            padding: 14px 24px;
             border: none;
-            border-radius: 14px;
+            border-radius: 12px;
             font-size: 1rem;
-            font-weight: 700;
+            font-weight: 600;
             cursor: pointer;
-            transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
-            box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         .btn-action:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 18px 34px rgba(0,0,0,0.22);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+        .btn-action:disabled {
+            background: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #3b82f6;
             color: #fff;
         }
         .btn-secondary {
-            background: linear-gradient(135deg, #8b67d9 0%, #a86ee7 100%);
+            background: #8b5cf6;
             color: #fff;
         }
         .btn-accent {
-            background: linear-gradient(135deg, #5a77d1 0%, #7f62d6 100%);
+            background: #10b981;
             color: #fff;
         }
-        .btn-back,
-        .btn-logout {
-            border-radius: 12px;
-            font-weight: 600;
-            letter-spacing: 0.01em;
+        .btn-warning {
+            background: #f59e0b;
+            color: #fff;
         }
         .clock-section {
-            background: rgba(255,255,255,0.08);
-            border-radius: 20px;
-            padding: 28px;
-            border: 1px solid rgba(255,255,255,0.14);
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+            display: none;
         }
-        .status-display {
-            font-size: 1.1em;
-            margin-bottom: 22px;
-            padding: 18px 16px;
-            border-radius: 14px;
-            background: rgba(255,255,255,0.12);
-            color: #fff;
-            min-height: 84px;
+        .clock-section.active {
+            display: block;
         }
-        .clock-button-row {
+        .clock-header {
+            position: relative;
             display: flex;
-            flex-wrap: wrap;
-            gap: 14px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .clock-header h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0;
+        }
+        .status-box {
+            background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
             margin-bottom: 24px;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
         }
-        .btn-sm {
-            min-width: 130px;
-            padding: 14px 22px;
+        .status-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            font-weight: 600;
         }
-        .btn-back {
-            background: rgba(255,255,255,0.14);
-            color: #fff;
+        .status-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 4px;
         }
-        .btn-back:hover {
-            background: rgba(255,255,255,0.22);
+        .status-detail {
+            font-size: 0.95rem;
+            color: #6b7280;
+        }
+        .time-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 14px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        .time-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+        #live-clock {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #2563eb;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.05em;
+        }
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .action-buttons button {
+            padding: 16px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .action-buttons button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+        }
+        .action-buttons button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .action-buttons button .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        .action-buttons button.processing .spinner {
+            display: block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .info-card {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        .info-card-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .info-card-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .notification-toast {
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.95rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .notification-toast.show {
+            display: flex;
+            animation: slideDown 0.3s ease;
+        }
+        .notification-toast.success {
+            background: #f0fdf4;
+            border-color: #86efac;
+            color: #166534;
+        }
+        .notification-toast.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+        .notification-toast.info {
+            background: #f0f9ff;
+            border-color: #bae6fd;
+            color: #0c2340;
         }
         .btn-logout {
-            margin-top: 16px;
-            background: rgba(0,0,0,0.24);
-            color: #f7f7f7;
+            width: 100%;
+            padding: 12px;
+            background: #f3f4f6;
+            color: #4b5563;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
         .btn-logout:hover {
-            background: rgba(0,0,0,0.32);
+            background: #e5e7eb;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @media (max-width: 480px) {
+            .container {
+                padding: 28px 20px;
+            }
+            h1 {
+                font-size: 1.6rem;
+            }
+            .clock-header h2 {
+                font-size: 1.5rem;
+            }
+            .action-buttons,
+            .info-cards {
+                grid-template-columns: 1fr;
+            }
+            .status-value {
+                font-size: 1.75rem;
+            }
+            #live-clock {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
 <body>  
     <div class="container">
-        <h1>Welcome, <span><?= $_SESSION['name'] ?></span></h1>
-        <p>This is the employee dashboard. Choose Attendance or the POS System below.</p>
-
-        <div id="employee-menu">
-            <button id="attendance-menu-btn" class="btn-action btn-primary">Attendance</button>
-            <button id="pos-menu-btn" class="btn-action btn-secondary">POS System</button>
-        </div>
-
-        <div id="attendance-section" class="clock-section" style="display: none;">
-            <h2>Attendance Clock</h2>
-            <div id="status-display" class="status-display">
-                Loading status...
-            </div>
-            <div class="clock-button-row">
-                <button id="clock-in-btn" class="btn-action btn-accent btn-sm">Clock In</button>
-                <button id="clock-out-btn" class="btn-action btn-secondary btn-sm">Clock Out</button>
-            </div>
+        <div id="employee-menu" style="display: flex; flex-direction: column; gap: 20px;">
             <div>
-                <button id="attendance-back-btn" class="btn-back btn-sm">Back to Menu</button>
+                <h1>Welcome, <?= $_SESSION['name'] ?></h1>
+                <p class="subtitle">Choose an option to get started.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button id="attendance-menu-btn" class="btn-action btn-primary">Attendance</button>
+                <button id="pos-menu-btn" class="btn-action btn-secondary">POS System</button>
             </div>
         </div>
 
-        <button onclick="window.location.href='logout.php'" class="btn-logout btn-sm">Logout</button>
+        <div id="attendance-section" class="clock-section">
+            <div class="clock-header">
+                <h2>Attendance Clock</h2>
+            </div>
+
+            <div id="attendanceToast" class="notification-toast info">
+                <span id="toastMessage">Ready to track your shift.</span>
+            </div>
+
+            <div class="status-box">
+                <div class="status-label">Current Status</div>
+                <div id="attendanceStatus" class="status-value">Connecting...</div>
+                <div id="attendanceStatusMeta" class="status-detail">Checking your shift status.</div>
+            </div>
+
+            <div class="time-display">
+                <div class="time-label">Time Now</div>
+                <div id="live-clock">--:--:--</div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="clock-in-btn" class="btn-accent"><span class="spinner"></span>Clock In</button>
+                <button id="clock-out-btn" class="btn-secondary"><span class="spinner"></span>Clock Out</button>
+                <button id="start-break-btn" class="btn-warning"><span class="spinner"></span>Start Break</button>
+                <button id="end-break-btn" class="btn-secondary"><span class="spinner"></span>End Break</button>
+            </div>
+
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-card-label">Work Duration</div>
+                    <div id="workDuration" class="info-card-value">0h 00m</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-label">Break Time</div>
+                    <div id="breakDuration" class="info-card-value">0m</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-label">Status</div>
+                    <div id="summaryStatus" class="info-card-value" style="font-size: 1rem; overflow: hidden; text-overflow: ellipsis;">Not clocked in</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-label">Overtime</div>
+                    <div id="summaryOvertime" class="info-card-value">0m</div>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="window.location.href='logout.php'" class="btn-logout">Logout</button>
+    </div>
 
 <script>
 let statusInterval;
+let clockInterval;
 
-function updateStatus() {
-    fetch('clock_handler.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'action=status'
-    })
+function formatDuration(seconds) {
+    seconds = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const parts = [];
+    if (hours) parts.push(hours + 'h');
+    parts.push(minutes.toString().padStart(2, '0') + 'm');
+    return parts.join(' ');
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('attendanceToast');
+    const text = document.getElementById('toastMessage');
+    toast.className = `notification-toast show ${type}`;
+    text.textContent = message;
+    clearTimeout(showToast.timeout);
+    showToast.timeout = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 4000);
+}
+
+function setButtonVisibility(state) {
+    document.getElementById('clock-in-btn').disabled = !state.canClockIn;
+    document.getElementById('clock-out-btn').disabled = !state.canClockOut;
+    document.getElementById('start-break-btn').disabled = !state.canStartBreak;
+    document.getElementById('end-break-btn').disabled = !state.canEndBreak;
+}
+
+function updateDashboard(data) {
+    document.getElementById('attendanceStatus').textContent = data.status;
+    document.getElementById('attendanceStatusMeta').textContent = data.statusDetail;
+    document.getElementById('workDuration').textContent = data.workDuration;
+    document.getElementById('breakDuration').textContent = data.breakDuration;
+    document.getElementById('summaryStatus').textContent = data.summaryStatus;
+    document.getElementById('summaryOvertime').textContent = data.overtimeLabel;
+    setButtonVisibility(data.buttonState);
+}
+
+function refreshLiveClock() {
+    const now = new Date();
+    document.getElementById('live-clock').textContent = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+}
+
+function updateStatus(silent = false) {
+    fetch('fetch_status.php')
     .then(response => response.json())
     .then(data => {
-        const statusEl = document.getElementById('status-display');
-        const inBtn = document.getElementById('clock-in-btn');
-        const outBtn = document.getElementById('clock-out-btn');
-        
-        if (data.status === 'in') {
-            statusEl.innerHTML = `<strong>Status: Clocked IN</strong><br>Since: ${data.clock_in}`;
-            statusEl.style.background = '#d4edda';
-            inBtn.disabled = true;
-            outBtn.disabled = false;
-        } else if (data.status === 'out') {
-            statusEl.innerHTML = `<strong>Status: Clocked OUT</strong><br>In: ${data.clock_in} | Out: ${data.clock_out}`;
-            statusEl.style.background = '#fff3cd';
-            inBtn.disabled = true;
-            outBtn.disabled = true;
-        } else {
-            statusEl.innerHTML = '<strong>Status: Not clocked in today</strong>';
-            statusEl.style.background = '#f0f8ff';
-            inBtn.disabled = false;
-            outBtn.disabled = true;
+        if (data.error) {
+            if (!silent) showToast(data.error, 'error');
+            return;
         }
+        updateDashboard(data);
     })
     .catch(err => {
         console.error('Status check failed:', err);
-        document.getElementById('status-display').innerHTML = 'Error checking status';
+        if (!silent) showToast('Unable to update attendance status.', 'error');
     });
 }
 
-function clockAction(action) {
-    const id = action === 'clock_in' ? 'clock-in-btn' : 'clock-out-btn';
-    const btn = document.getElementById(id);
-    if (!btn) return;
+function sendAttendanceAction(action) {
+    const button = this;
+    if (!button) return;
 
-    btn.disabled = true;
-    btn.textContent = 'Processing...';
-    
-    fetch('clock_handler.php', {
+    // Store original content
+    const originalHTML = button.innerHTML;
+
+    // Disable button and show processing
+    button.disabled = true;
+    button.classList.add('processing');
+    button.innerHTML = '<span class="spinner"></span>Processing...';
+
+    fetch('attendance.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `action=${action}`
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.text().then(text => {
+            console.log('Raw response:', text);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error('Invalid JSON response: ' + text);
+            }
+        });
+    })
     .then(data => {
-        alert(data.message || data.error);
-        updateStatus();
-        if (data.status === 'success') {
-            btn.textContent = action === 'clock_in' ? 'Clocked In!' : 'Clocked Out!';
-            setTimeout(() => {
-                btn.textContent = action === 'clock_in' ? 'Clock In' : 'Clock Out';
-                btn.disabled = false;
-            }, 2000);
+        if (data.success) {
+            showToast(data.message, 'success');
+            updateStatus(true);
         } else {
-            btn.disabled = false;
-            btn.textContent = action === 'clock_in' ? 'Clock In' : 'Clock Out';
+            showToast(data.message || 'Action failed', 'error');
         }
     })
     .catch(err => {
-        alert('Error: ' + err);
-        btn.disabled = false;
-        btn.textContent = action === 'clock_in' ? 'Clock In' : 'Clock Out';
+        console.error('Attendance action error:', err);
+        showToast('Failed to process request. Please try again.', 'error');
+    })
+    .finally(() => {
+        // Restore button state
+        button.disabled = false;
+        button.classList.remove('processing');
+        button.innerHTML = originalHTML;
     });
 }
 
 function showAttendanceSection() {
     document.getElementById('employee-menu').style.display = 'none';
-    document.getElementById('attendance-section').style.display = 'block';
+    document.getElementById('attendance-section').classList.add('active');
     updateStatus();
 }
 
 function hideAttendanceSection() {
-    document.getElementById('attendance-section').style.display = 'none';
-    document.getElementById('employee-menu').style.display = 'block';
+    document.getElementById('attendance-section').classList.remove('active');
+    document.getElementById('employee-menu').style.display = 'flex';
 }
 
-// Init
- document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('attendance-menu-btn').onclick = showAttendanceSection;
     document.getElementById('pos-menu-btn').onclick = () => window.location.href = 'pos.php';
-    document.getElementById('attendance-back-btn').onclick = hideAttendanceSection;
-    document.getElementById('clock-in-btn').onclick = () => clockAction('clock_in');
-    document.getElementById('clock-out-btn').onclick = () => clockAction('clock_out');
-    statusInterval = setInterval(updateStatus, 30000);
+
+    // Attach event listeners using addEventListener for better control
+    document.getElementById('clock-in-btn').addEventListener('click', function() {
+        sendAttendanceAction.call(this, 'clock_in');
+    });
+    document.getElementById('clock-out-btn').addEventListener('click', function() {
+        sendAttendanceAction.call(this, 'clock_out');
+    });
+    document.getElementById('start-break-btn').addEventListener('click', function() {
+        sendAttendanceAction.call(this, 'start_break');
+    });
+    document.getElementById('end-break-btn').addEventListener('click', function() {
+        sendAttendanceAction.call(this, 'end_break');
+    });
+
+    refreshLiveClock();
+    clockInterval = setInterval(refreshLiveClock, 1000);
+    statusInterval = setInterval(() => updateStatus(true), 30000);
 });
 </script>
-    </div>
-
 </body>
 </html>
-
