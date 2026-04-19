@@ -291,6 +291,18 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
         .btn-logout:hover {
             background: #e5e7eb;
         }
+        
+        .cart-badge {
+            background: #e74c3c;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 18px;
+            text-align: center;
+            margin-left: 8px;
+        }
         @keyframes slideDown {
             from {
                 opacity: 0;
@@ -333,7 +345,9 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
             </div>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <button id="attendance-menu-btn" class="btn-action btn-primary">Attendance</button>
-                <button id="pos-menu-btn" class="btn-action btn-secondary">POS System</button>
+                <button id="pos-menu-btn" class="btn-action btn-secondary" id="posBadgeBtn">
+                    POS System <span id="posCartBadge" class="cart-badge" style="display:none;">0</span>
+                </button>
             </div>
         </div>
 
@@ -516,6 +530,28 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('attendance-menu-btn').onclick = showAttendanceSection;
     document.getElementById('pos-menu-btn').onclick = () => window.location.href = 'pos.php';
 
+    // NEW: Pending cart badge updater
+    async function updatePosBadge() {
+        try {
+            const response = await fetch('pending_order_handler.php?action=get_pending');
+            const data = await response.json();
+            const badge = document.getElementById('posCartBadge');
+            const btn = document.getElementById('posBadgeBtn');
+            
+            if (data.success && data.order && data.order.length > 0) {
+                const itemCount = data.order.reduce((sum, item) => sum + item.qty, 0);
+                badge.textContent = itemCount > 99 ? '99+' : itemCount;
+                badge.style.display = 'inline';
+                btn.classList.add('has-items');
+            } else {
+                badge.style.display = 'none';
+                btn.classList.remove('has-items');
+            }
+        } catch (err) {
+            console.error('Badge update failed:', err);
+        }
+    }
+
     // Attach event listeners using addEventListener for better control
     document.getElementById('clock-in-btn').addEventListener('click', function() {
         sendAttendanceAction.call(this, 'clock_in');
@@ -533,6 +569,10 @@ window.addEventListener('DOMContentLoaded', () => {
     refreshLiveClock();
     clockInterval = setInterval(refreshLiveClock, 1000);
     statusInterval = setInterval(() => updateStatus(true), 30000);
+    
+    // NEW: Update cart badge every 30s
+    updatePosBadge();
+    setInterval(updatePosBadge, 30000);
 });
 </script>
 </body>

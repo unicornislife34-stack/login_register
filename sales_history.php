@@ -81,25 +81,53 @@ $daily_data = $daily_result ? $daily_result->fetch_all(MYSQLI_ASSOC) : [];
 $budget_target = 1000000;
 $budget_percent = $totalSales / $budget_target * 100;
 
-// Get order details if requested
+// Determine active tab
+$activeTab = $_GET['tab'] ?? 'completed';
+$pageTitle = $activeTab === 'pending' ? 'Pending Orders' : 'Sales History';
+
+// Handle pending tab
+$pendingOrders = [];
+if ($activeTab === 'pending') {
+    $pending_query = "SELECT po.*, 
+        (SELECT COUNT(*) FROM JSON_TABLE(po.order_data, '$[*]' COLUMNS (qty INT PATH '$.qty'))) as item_count
+        FROM pending_orders po 
+        WHERE po.expires_at > NOW() 
+        ORDER BY po.updated_at DESC";
+    $pending_result = $conn->query($pending_query);
+    $pendingOrders = $pending_result ? $pending_result->fetch_all(MYSQLI_ASSOC) : [];
+} 
+
+// Get order details if requested (for both tabs)
 $orderDetails = null;
 $selectedOrder = null;
+$selectedPendingOrder = null;
 if (isset($_GET['order_id'])) {
     $orderId = intval($_GET['order_id']);
+    
+    if ($activeTab === 'pending') {
+        $stmt = $conn->prepare("SELECT * FROM pending_orders WHERE id = ? AND expires_at > NOW()");
+        $stmt->bind_param('i', $orderId);
+        $stmt->execute();
+        $selectedPendingOrder = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        
+        $orderDetails = json_decode($selectedPendingOrder['order_data'] ?? '[]', true);
+    } else {
+        $stmt = $conn->prepare("SELECT * FROM orders WHERE id = ?");
+        $stmt->bind_param('i', $orderId);
+        $stmt->execute();
+        $selectedOrder = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
-    $stmt = $conn->prepare("SELECT * FROM orders WHERE id = ?");
-    $stmt->bind_param('i', $orderId);
-    $stmt->execute();
-    $selectedOrder = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    $stmt = $conn->prepare("SELECT oi.*, i.item_name as current_name FROM order_items oi LEFT JOIN inventory i ON oi.inventory_id = i.id WHERE oi.order_id = ?");
-    $stmt->bind_param('i', $orderId);
-    $stmt->execute();
-    $orderDetails = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
+        $stmt = $conn->prepare("SELECT oi.*, i.item_name as current_name FROM order_items oi LEFT JOIN inventory i ON oi.inventory_id = i.id WHERE oi.order_id = ?");
+        $stmt->bind_param('i', $orderId);
+        $stmt->execute();
+        $orderDetails = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+    }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -210,8 +238,12 @@ if (isset($_GET['order_id'])) {
         </header>
 
         <main class="dashboard-container">
-            <div class="content-header">
-                <h2>Sales History</h2>
+<div class="content-header">
+                <h2 id="pageTitle">Sales History</h2>
+                <div class="tab-buttons">
+                    <button class="tab-btn active" onclick="switchTab('completed')">Completed Sales</button>
+                    <button class="tab-btn" onclick="switchTab('pending')">Pending Orders</button>
+                </div>
                 <a href="menu.php" class="btn-primary">
                     <i class="fas fa-plus"></i> New Order
                 </a>

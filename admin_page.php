@@ -16,7 +16,7 @@ if (!isset($_SESSION['username'])) {
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="admin-page">
+<body class="admin-page admin-home">
     <div class="admin-wrapper">
         <!-- Header -->
         <header class="dashboard-header">

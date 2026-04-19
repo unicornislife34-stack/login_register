@@ -58,9 +58,6 @@ function isActiveForm($formName, $activeForm) {
                 <p>Already have an account? <a href="#" onclick="showForm('login-form')">Login</a></p>
             </form>
         </div>
-
-
-
     </div>
 
     <script src="script.js"></script>

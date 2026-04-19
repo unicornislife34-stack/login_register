@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     $insufficient = [];
-    $totalAmount = 0;
+    $subtotal = 0;
     foreach ($orderLines as $line) {
         $id = intval($line['id'] ?? 0);
         $qty = intval($line['qty'] ?? 0);
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'available' => intval($inventory[$id]['quantity_in_stock'])
             ];
         }
-        $totalAmount += floatval($inventory[$id]['price']) * $qty;
+        $subtotal += floatval($inventory[$id]['price']) * $qty;
     }
 
     if ($insufficient) {
@@ -59,9 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         exit;
     }
 
+    $tax = round($subtotal * 0.12, 2);
+    $totalAmount = round($subtotal + $tax, 2);
+
     $createOrdersTable = "CREATE TABLE IF NOT EXISTS orders (
         id INT PRIMARY KEY AUTO_INCREMENT,
         user VARCHAR(100),
+        subtotal DECIMAL(12,2) NOT NULL DEFAULT 0,
+        tax DECIMAL(12,2) NOT NULL DEFAULT 0,
         total_amount DECIMAL(12,2) NOT NULL,
         ticket_number VARCHAR(50) UNIQUE,
         payment_method VARCHAR(50) DEFAULT 'cash',
@@ -70,7 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     )";
     $conn->query($createOrdersTable);
 
-    $createOrderItemsTable = "CREATE TABLE IF NOT EXISTS order_items (
+    $checkSubtotal = $conn->query("SHOW COLUMNS FROM orders LIKE 'subtotal'");
+    if ($checkSubtotal && $checkSubtotal->num_rows === 0) {
+        $conn->query("ALTER TABLE orders ADD COLUMN subtotal DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER user, ADD COLUMN tax DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER subtotal");
+    }
+
+$createOrderItemsTable = "CREATE TABLE IF NOT EXISTS order_items (
         id INT PRIMARY KEY AUTO_INCREMENT,
         order_id INT NOT NULL,
         inventory_id INT NOT NULL,
@@ -82,12 +92,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     )";
     $conn->query($createOrderItemsTable);
 
+    // NEW: Pending orders table for persistence
+    $createPendingOrdersTable = "CREATE TABLE IF NOT EXISTS pending_orders (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        username VARCHAR(100) NOT NULL,
+        order_data JSON NOT NULL,
+        subtotal DECIMAL(12,2) DEFAULT 0,
+        tax DECIMAL(12,2) DEFAULT 0,
+        total_amount DECIMAL(12,2) DEFAULT 0,
+        session_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP + INTERVAL 24 HOUR),
+        INDEX idx_username (username),
+        INDEX idx_expires (expires_at)
+    )";
+    $conn->query($createPendingOrdersTable);
+
     $conn->begin_transaction();
     try {
-        $stmtOrder = $conn->prepare('INSERT INTO orders (user, total_amount, ticket_number, payment_method, payment_details) VALUES (?, ?, ?, ?, ?)');
+        $stmtOrder = $conn->prepare('INSERT INTO orders (user, subtotal, tax, total_amount, ticket_number, payment_method, payment_details) VALUES (?, ?, ?, ?, ?, ?, ?)');
         $username = $_SESSION['username'] ?? 'employee';
         $paymentDetails = json_encode(['method' => $paymentMethod]);
-        $stmtOrder->bind_param('sdsss', $username, $totalAmount, $ticketNumber, $paymentMethod, $paymentDetails);
+        $stmtOrder->bind_param('sdddsss', $username, $subtotal, $tax, $totalAmount, $ticketNumber, $paymentMethod, $paymentDetails);
         $stmtOrder->execute();
         $orderId = $conn->insert_id;
         $stmtOrder->close();
@@ -103,9 +130,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
             $price = floatval($inventory[$id]['price']);
             $name = $conn->real_escape_string($inventory[$id]['item_name']);
-            $subtotal = $price * $qty;
+            $itemSubtotal = round($price * $qty, 2);
 
-            $stmtItem->bind_param('iisidd', $orderId, $id, $name, $price, $qty, $subtotal);
+            $stmtItem->bind_param('iisidd', $orderId, $id, $name, $price, $qty, $itemSubtotal);
             $stmtItem->execute();
 
             $stmtUpdate->bind_param('iii', $qty, $id, $qty);
@@ -210,12 +237,12 @@ $lowStockCount = count($lowStockItems);
                                     <?php if (!empty($item['sizes'])): ?><p class="size">Sizes: <?= htmlspecialchars($item['sizes']) ?></p><?php endif; ?>
                                 </div>
                                 <div class="quantity-controls">
-                                    <button type="button" onclick="changeQuantity(<?= $item['id'] ?>, -1)">-</button>
+                                    <button type="button" class="qty-btn" onclick="changeQuantity(<?= $item['id'] ?>, -1)">-</button>
                                     <div class="quantity-value" id="qty-<?= $item['id'] ?>">1</div>
-                                    <button type="button" onclick="changeQuantity(<?= $item['id'] ?>, 1)">+</button>
+                                    <button type="button" class="qty-btn" onclick="changeQuantity(<?= $item['id'] ?>, 1)">+</button>
                                 </div>
                                 <?php if (intval($item['stock_quantity']) > 0): ?>
-                                    <button type="button" class="add-to-cart" onclick="addToCart(<?= $item['id'] ?>, <?= json_encode($item['item_name']) ?>, <?= $item['price'] ?>)">Add to Order</button>
+                                    <button type="button" class="add-to-cart" onclick="addToCart(<?= $item['id'] ?>)">Add to Order</button>
                                 <?php else: ?>
                                     <button type="button" class="add-to-cart disabled" disabled>Out of Stock</button>
                                 <?php endif; ?>
@@ -233,9 +260,9 @@ $lowStockCount = count($lowStockItems);
                     <div class="order-empty"><i class="fas fa-shopping-cart"></i><p>No items in the order yet.</p></div>
                 </div>
                 <div class="order-summary">
-                    <div class="summary-row"><span>Subtotal</span><span id="orderSubtotal">₱0.00</span></div>
-                    <div class="summary-row"><span>Tax (12%)</span><span id="orderTax">₱0.00</span></div>
-                    <div class="summary-row total-row"><span>Total</span><span id="orderTotal">₱0.00</span></div>
+                    <div class="summary-row"><span>Subtotal</span><span id="orderSubtotal">: ₱0.00</span></div>
+                    <div class="summary-row"><span>Tax (12%)</span><span id="orderTax">: ₱0.00</span></div>
+                    <div class="summary-row total-row"><span>Total</span><span id="orderTotal">: ₱0.00</span></div>
                     <div class="summary-row payment-row">
                         <span>Payment</span>
                         <select id="paymentMethodSelect">
@@ -261,6 +288,8 @@ $lowStockCount = count($lowStockItems);
         const menuItems = <?= json_encode($menu_items, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
         let currentCategory = '';
         let order = {};
+        const USERNAME = '<?= $_SESSION['username'] ?>';
+        const CART_STORAGE_KEY = `pos_order_cart_${USERNAME}`;
         const itemsGrid = document.getElementById('itemsGrid');
         const searchInput = document.getElementById('menuSearchInput');
         const categoryList = document.querySelectorAll('.category-item');
@@ -277,29 +306,76 @@ $lowStockCount = count($lowStockItems);
             return parseFloat(amount).toLocaleString('en-PH', { style: 'currency', currency: 'PHP' });
         }
 
-        function changeQuantity(id, delta) {
-            const quantityEl = document.getElementById(`qty-${id}`);
-            const current = parseInt(quantityEl.textContent, 10) || 1;
-            const next = Math.max(1, current + delta);
-            quantityEl.textContent = next;
+        // Load cart from localStorage on startup
+        function loadOrderFromStorage() {
+            const saved = localStorage.getItem(CART_STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && typeof parsed === 'object') {
+                        order = parsed;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse cart:', e);
+                    order = {};
+                }
+            }
         }
 
-        function addToCart(id, name, price) {
+        // Save cart to localStorage
+        function saveOrderToStorage() {
+            localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(order));
+        }
+
+        // Format functions
+        function changeQuantity(id, delta) {
+            const qtyEl = document.getElementById(`qty-${id}`);
+            if (!qtyEl) return;
+            const current = parseInt(qtyEl.textContent, 10) || 1;
+            const next = Math.max(1, current + delta);
+            qtyEl.textContent = next;
+        }
+
+        function addToCart(id) {
+            const numId = parseInt(id, 10);
+            const item = menuItems.find(m => parseInt(m.id, 10) === numId);
+            if (!item) {
+                console.error('Product not found. Looking for id:', numId, 'Available ids:', menuItems.map(m => m.id));
+                showToast('Product not found');
+                return;
+            }
             const qtyEl = document.getElementById(`qty-${id}`);
             const quantity = parseInt(qtyEl.textContent, 10) || 1;
-            const key = id;
-            if (!order[key]) {
-                order[key] = { id, name, price, qty: 0 };
+            if (!order[id]) {
+                order[id] = { id: item.id, name: item.item_name, price: parseFloat(item.price), qty: 0 };
             }
-            order[key].qty += quantity;
+            order[id].qty += quantity;
             qtyEl.textContent = '1';
             renderOrder();
-            showToast(`${name} added to order`);
+            saveOrderToStorage();
+            showToast(`${item.item_name} added to order`);
         }
 
-        function removeOrderItem(key) {
-            delete order[key];
+        function removeOrderItem(id) {
+            delete order[id];
             renderOrder();
+            saveOrderToStorage();
+        }
+
+        function updateQty(id, delta) {
+            if (!order[id]) return;
+            order[id].qty += delta;
+            if (order[id].qty <= 0) {
+                delete order[id];
+            }
+            renderOrder();
+            saveOrderToStorage();
+        }
+
+        function clearOrder() {
+            order = {};
+            renderOrder();
+            localStorage.removeItem(CART_STORAGE_KEY);
         }
 
         function renderOrder() {
@@ -311,6 +387,7 @@ $lowStockCount = count($lowStockItems);
                 orderTotalEl.textContent = formatMoney(0);
                 return;
             }
+
             let subtotal = 0;
             orderItemsEl.innerHTML = items.map(item => {
                 const itemTotal = item.price * item.qty;
@@ -330,24 +407,11 @@ $lowStockCount = count($lowStockItems);
                     </div>
                 `;
             }).join('');
+
             const tax = subtotal * 0.12;
             orderSubtotalEl.textContent = formatMoney(subtotal);
             orderTaxEl.textContent = formatMoney(tax);
             orderTotalEl.textContent = formatMoney(subtotal + tax);
-        }
-
-        function updateQty(key, delta) {
-            if (!order[key]) return;
-            order[key].qty += delta;
-            if (order[key].qty <= 0) {
-                delete order[key];
-            }
-            renderOrder();
-        }
-
-        function clearOrder() {
-            order = {};
-            renderOrder();
         }
 
         function checkout() {
@@ -373,11 +437,12 @@ $lowStockCount = count($lowStockItems);
                     showToast(data.message || 'Checkout failed');
                     return;
                 }
-                showToast('Sale recorded');
+                showToast('Sale recorded successfully');
                 printReceipt(items, data.orderId, data.ticketNumber, paymentMethod);
                 order = {};
                 renderOrder();
-                setTimeout(() => window.location.reload(), 500);
+                localStorage.removeItem(CART_STORAGE_KEY);
+                setTimeout(() => window.location.reload(), 2000);
             })
             .catch(() => {
                 showToast('Checkout failed');
@@ -458,6 +523,7 @@ $lowStockCount = count($lowStockItems);
             });
         }
 
+        // Event listeners
         categoryList.forEach(item => item.addEventListener('click', () => {
             categoryList.forEach(i => i.classList.remove('active'));
             item.classList.add('active');
@@ -466,6 +532,9 @@ $lowStockCount = count($lowStockItems);
         searchInput.addEventListener('input', filterProducts);
         clearOrderBtn.addEventListener('click', clearOrder);
         checkoutBtn.addEventListener('click', checkout);
+
+        // Initialize on page load - run immediately since script is at bottom of page
+        loadOrderFromStorage();
         renderOrder();
     </script>
 </body>
