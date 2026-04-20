@@ -394,9 +394,7 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
                     <div id="workDuration" class="info-card-value">0h 00m</div>
                 </div>
                 <div class="flex flex-col gap-3">
-    <button id="dashboard-menu-btn" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-4 rounded-xl text-base font-semibold cursor-pointer transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" onclick="window.location.href='employee_dashboard.php'">
-                        <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
-                    </button>
+
 
                     <button id="pos-menu-btn" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-4 rounded-xl text-base font-semibold cursor-pointer transition-all shadow-md hover:shadow-lg transform hover:-translate-y-1">
                         <i class="fas fa-cash-register mr-2"></i>POS System

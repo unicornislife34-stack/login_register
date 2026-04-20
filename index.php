@@ -1,11 +1,16 @@
 ﻿<?php
-if (!empty($_SERVER['HTTPS']) && ('on' == $_SERVER['HTTPS'])) {
-$uri = 'https://';
+session_start();
+
+// Redirect based on login status
+if (isset($_SESSION['username'])) {
+    if ($_SESSION['role'] === 'admin') {
+        header('Location: admin_page.php');
+    } else {
+        header('Location: employee_dashboard.php');
+    }
 } else {
-$uri = 'http://';
+    header('Location: login_register.html');
 }
-$uri .= $_SERVER['HTTP_HOST'];
-header('Location: '.$uri.'/dashboard/');
 exit;
 ?>
-Something is wrong with the XAMPP installation :-(
+
