@@ -303,6 +303,18 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
         .btn-logout:hover {
             background: #e5e7eb;
         }
+        
+        .cart-badge {
+            background: #e74c3c;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 18px;
+            text-align: center;
+            margin-left: 8px;
+        }
         @keyframes slideDown {
             from {
                 opacity: 0;
@@ -338,10 +350,48 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
 </head>
 <body>  
     <div class="container">
-            <div id="employee-menu" class="flex flex-col gap-6">
-                <div>
-                    <h1 class="text-2xl font-bold mb-2">Welcome, <?= $_SESSION['name'] ?></h1>
-                    <p class="text-gray-600 text-base leading-relaxed">Choose an option to get started.</p>
+        <div id="employee-menu" style="display: flex; flex-direction: column; gap: 20px;">
+            <div>
+                <h1>Welcome, <?= $_SESSION['name'] ?></h1>
+                <p class="subtitle">Choose an option to get started.</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button id="attendance-menu-btn" class="btn-action btn-primary">Attendance</button>
+                <button id="pos-menu-btn" class="btn-action btn-secondary">POS System</button>
+            </div>
+        </div>
+
+        <div id="attendance-section" class="clock-section">
+            <div class="clock-header">
+                <h2>Attendance Clock</h2>
+            </div>
+
+            <div id="attendanceToast" class="notification-toast info">
+                <span id="toastMessage">Ready to track your shift.</span>
+            </div>
+
+            <div class="status-box">
+                <div class="status-label">Current Status</div>
+                <div id="attendanceStatus" class="status-value">Connecting...</div>
+                <div id="attendanceStatusMeta" class="status-detail">Checking your shift status.</div>
+            </div>
+
+            <div class="time-display">
+                <div class="time-label">Time Now</div>
+                <div id="live-clock">--:--:--</div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="clock-in-btn" class="btn-accent"><span class="spinner"></span>Clock In</button>
+                <button id="clock-out-btn" class="btn-secondary"><span class="spinner"></span>Clock Out</button>
+                <button id="start-break-btn" class="btn-warning"><span class="spinner"></span>Start Break</button>
+                <button id="end-break-btn" class="btn-secondary"><span class="spinner"></span>End Break</button>
+            </div>
+
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-card-label">Work Duration</div>
+                    <div id="workDuration" class="info-card-value">0h 00m</div>
                 </div>
                 <div class="flex flex-col gap-3">
     <button id="dashboard-menu-btn" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-4 rounded-xl text-base font-semibold cursor-pointer transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" onclick="window.location.href='employee_dashboard.php'">
@@ -369,6 +419,24 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
 
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('pos-menu-btn').onclick = () => window.location.href = 'pos.php';
+
+    // Attach event listeners using addEventListener for better control
+    document.getElementById('clock-in-btn').addEventListener('click', function() {
+        sendAttendanceAction.call(this, 'clock_in');
+    });
+    document.getElementById('clock-out-btn').addEventListener('click', function() {
+        sendAttendanceAction.call(this, 'clock_out');
+    });
+    document.getElementById('start-break-btn').addEventListener('click', function() {
+        sendAttendanceAction.call(this, 'start_break');
+    });
+    document.getElementById('end-break-btn').addEventListener('click', function() {
+        sendAttendanceAction.call(this, 'end_break');
+    });
+
+    refreshLiveClock();
+    clockInterval = setInterval(refreshLiveClock, 1000);
+    statusInterval = setInterval(() => updateStatus(true), 30000);
 });
 </script>
 </body>

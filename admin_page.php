@@ -28,7 +28,7 @@ if (!isset($_SESSION['username'])) {
         }
     </script>
 </head>
-<body class="admin-page">
+<body class="admin-page admin-home">
     <div class="admin-wrapper">
         <!-- Header -->
         <header class="dashboard-header">

@@ -757,6 +757,93 @@ body.inventory-page {
     background: #e2e6f3;
 }
 
+.content-actions .btn-primary {
+    background: #667eea;
+    border: none; 
+    cursor: pointer;
+}
+
+.highlight-panel {
+    background: white;
+    border: 1px solid #e0e0e0;
+    padding: 22px;
+    margin-bottom: 24px;
+}
+
+.highlight-panel h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: rgb(45, 45, 45)
+}
+
+.highlight-panel .inventory-table {
+    background: transparent;
+}
+
+/* Section headers with buttons */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header h3 {
+    margin: 0;
+}
+
+/* Chart tabs */
+.chart-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    background: #fff;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 120px;
+}
+
+.tab-btn.active {
+    background: #eef2ff;
+    border-color: #667eea;
+    color: #334eea;
+    font-weight: 600;
+}
+
+.tab-btn:hover {
+    background: #f5f5f5;
+}
+
+.chart-tab {
+    height: 400px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 0 0 10px 10px;
+    padding: 16px;
+}
+
+/* Large modal for charts */
+.large-modal .modal-content {
+    max-width: 900px;
+    width: 90%;
+}
+
+.large-modal .modal-body {
+    padding: 20px;
+}
+
 /* Alerts */
 .alert {
     padding: 12px 16px;
@@ -2272,9 +2359,8 @@ body.menu-page .order-modal-overlay {
 .qty-btn {
     width: 28px;
     height: 28px;
-    border: 1px solid rgba(0, 0, 0, 0.18);
     border-radius: 10px;
-    background: white;
+    background: rgba(102, 126, 234, 0.4);
     cursor: pointer;
     font-size: 16px;
     line-height: 0;
@@ -3418,11 +3504,18 @@ body.menu-page .pos-menu .add-to-cart {
     font-weight: 600;
 }
 
-.dashboard-container {
+..dashboard-container {
     margin-left: 280px;
     padding: 32px 32px 64px;
     flex: 1;
     max-width: calc(100% - 280px);
+}
+
+.admin-page.admin-home .dashboard-container {
+    margin-left: 0;
+    max-width: 100%;
+    padding-left: 32px;
+    padding-right: 32px;
 }
 
 .welcome-section {

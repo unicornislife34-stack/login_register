@@ -41,7 +41,7 @@ function logInventoryHistory($conn, $inventory_id, $action, $item_name, $categor
     $quantity = intval($quantity);
     $reason = mysqli_real_escape_string($conn, $reason);
 
-    $sql = "INSERT INTO inventory_history (inventory_id, action, item_name, category, quantity, reason) VALUES ($inventory_id, '$action', '$item_name', '$category', $quantity, '" . $reason . "')";
+    $sql = "INSERT INTO inventory_history (inventory_id, action, item_name, category, quantity, reason) VALUES ($inventory_id, '$action', '$item_name', '$category', $quantity, '$reason')";
     mysqli_query($conn, $sql);
 }
 
@@ -335,9 +335,39 @@ $items = mysqli_fetch_all($result, MYSQLI_ASSOC);
 $category_result = mysqli_query($conn, "SELECT DISTINCT category FROM inventory ORDER BY category");
 $categories = mysqli_fetch_all($category_result, MYSQLI_ASSOC);
 
-// Get inventory stats
-$stats_result = mysqli_query($conn, "SELECT COUNT(*) as total_items, SUM(quantity_in_stock) as total_stock, SUM(price * quantity_in_stock) as total_value FROM inventory");
+// Get inventory stats and valuation
+$stats_result = mysqli_query($conn, "SELECT COUNT(*) as total_items,
+    SUM(quantity_in_stock) as total_stock,
+    SUM(cost * quantity_in_stock) as total_value,
+    SUM(price * quantity_in_stock) as total_retail_value,
+    SUM((price - cost) * quantity_in_stock) as total_profit
+    FROM inventory");
 $stats = mysqli_fetch_assoc($stats_result);
+$stats['total_value'] = floatval($stats['total_value']);
+$stats['total_retail_value'] = floatval($stats['total_retail_value']);
+$stats['total_profit'] = floatval($stats['total_profit']);
+$stats['profit_margin'] = $stats['total_value'] > 0 ? ($stats['total_profit'] / $stats['total_value']) * 100 : 0;
+
+$valuation_result = mysqli_query($conn, "SELECT id, item_name, category, price, cost, quantity_in_stock FROM inventory ORDER BY item_name ASC");
+$valuation_items = mysqli_fetch_all($valuation_result, MYSQLI_ASSOC);
+foreach ($valuation_items as &$valuation_item) {
+    $inventory_value = floatval($valuation_item['cost']) * intval($valuation_item['quantity_in_stock']);
+    $retail_value = floatval($valuation_item['price']) * intval($valuation_item['quantity_in_stock']);
+    $profit_value = $retail_value - $inventory_value;
+    $valuation_item['inventory_value'] = $inventory_value;
+    $valuation_item['retail_value'] = $retail_value;
+    $valuation_item['profit_value'] = $profit_value;
+    $valuation_item['profit_margin'] = $inventory_value > 0 ? ($profit_value / $inventory_value) * 100 : ($retail_value > 0 ? 100 : 0);
+}
+unset($valuation_item);
+
+$top_selling_query = "SELECT i.id, i.item_name, i.category, COALESCE(SUM(oi.qty), 0) as total_qty_sold, COALESCE(SUM(oi.subtotal), 0) as total_sales_value FROM inventory i LEFT JOIN order_items oi ON oi.inventory_id = i.id GROUP BY i.id ORDER BY total_qty_sold DESC, total_sales_value DESC LIMIT 10";
+$top_selling_result = mysqli_query($conn, $top_selling_query);
+$top_selling = mysqli_fetch_all($top_selling_result, MYSQLI_ASSOC);
+
+$bottom_selling_query = "SELECT i.id, i.item_name, i.category, COALESCE(SUM(oi.qty), 0) as total_qty_sold, COALESCE(SUM(oi.subtotal), 0) as total_sales_value FROM inventory i LEFT JOIN order_items oi ON oi.inventory_id = i.id GROUP BY i.id ORDER BY total_qty_sold ASC, total_sales_value ASC LIMIT 10";
+$bottom_selling_result = mysqli_query($conn, $bottom_selling_query);
+$bottom_selling = mysqli_fetch_all($bottom_selling_result, MYSQLI_ASSOC);
 
 $low_stock_count = 0;
 foreach ($items as $item) {
@@ -358,11 +388,11 @@ $suppliers = mysqli_fetch_all($supplier_result, MYSQLI_ASSOC);
 
 // Inventory history search
 $history_search = isset($_GET['history_search']) ? mysqli_real_escape_string($conn, $_GET['history_search']) : '';
-$history_query = "SELECT item_name, category, quantity_in_stock AS quantity, date_added FROM inventory WHERE 1=1";
+$history_query = "SELECT id, inventory_id, action, item_name, category, quantity, reason, changed_at FROM inventory_history WHERE 1=1";
 if ($history_search) {
     $history_query .= " AND item_name LIKE '%$history_search%'";
 }
-$history_query .= " ORDER BY date_added DESC LIMIT 200";
+$history_query .= " ORDER BY changed_at DESC LIMIT 200";
 $history_result = mysqli_query($conn, $history_query);
 $history_items = mysqli_fetch_all($history_result, MYSQLI_ASSOC);
 
@@ -396,17 +426,6 @@ if (isset($_GET['edit_supplier'])) {
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'poppins': ['Poppins', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
 </head>
 <body class="inventory-page">
     <div class="inventory-wrapper">
@@ -775,14 +794,23 @@ if (isset($_GET['edit_supplier'])) {
             <div id="valuationSection" class="page-section" style="display:none;">
                 <div class="content-header">
                     <h2>Valuation Report</h2>
+                    <div class="content-actions">
+                        <button type="button" class="btn-primary" onclick="exportProfitMarginCsv()">
+                            <i class="fas fa-file-csv"></i> Export to Excel
+                        </button>
+                    </div>
                 </div>
-                <div class="table-container">
+                <div class="table-container highlight-panel">
+                    <h3>Summary</h3>
                     <table class="inventory-table">
                         <thead>
                             <tr>
                                 <th>Total Products</th>
                                 <th>Total Stock</th>
                                 <th>Total Inventory Value</th>
+                                <th>Total Retail Value</th>
+                                <th>Potential Profit</th>
+                                <th>Profit Margin</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -790,9 +818,143 @@ if (isset($_GET['edit_supplier'])) {
                                 <td><?= $stats['total_items'] ?? 0 ?></td>
                                 <td><?= $stats['total_stock'] ?? 0 ?></td>
                                 <td>₱<?= number_format($stats['total_value'] ?? 0, 2) ?></td>
+                                <td>₱<?= number_format($stats['total_retail_value'] ?? 0, 2) ?></td>
+                                <td>₱<?= number_format($stats['total_profit'] ?? 0, 2) ?></td>
+                                <td><?= number_format($stats['profit_margin'] ?? 0, 2) ?>%</td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="table-container highlight-panel">
+                    <div class="section-header">
+                        <h3>Profit Margin Report</h3>
+                        <button type="button" class="btn-secondary" onclick="showProfitCharts(event)">
+                            <i class="fas fa-chart-bar"></i> View Detailed Report
+                        </button>
+                    </div>
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Stock</th>
+                                <th>Cost Value</th>
+                                <th>Retail Value</th>
+                                <th>Potential Profit</th>
+                                <th>Margin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($valuation_items) > 0): ?>
+                                <?php foreach ($valuation_items as $valuation_item): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($valuation_item['item_name']) ?></td>
+                                        <td><?= htmlspecialchars($valuation_item['category'] ?? 'N/A') ?></td>
+                                        <td><?= intval($valuation_item['quantity_in_stock']) ?></td>
+                                        <td>₱<?= number_format($valuation_item['inventory_value'], 2) ?></td>
+                                        <td>₱<?= number_format($valuation_item['retail_value'], 2) ?></td>
+                                        <td>₱<?= number_format($valuation_item['profit_value'], 2) ?></td>
+                                        <td><?= number_format($valuation_item['profit_margin'], 2) ?>%</td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="7" class="no-data"><i class="fas fa-inbox"></i><p>No items available for valuation</p></td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-container highlight-panel">
+                    <h3>Stock Analysis Report</h3>
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Stock</th>
+                                <th>Batch Number</th>
+                                <th>Date Delivered</th>
+                                <th>Batch Expiration Date</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+
+                <div class="table-container highlight-panel">
+                    <div class="section-header">
+                        <h3>Top 10 Best Selling Products</h3>
+                        <button type="button" class="btn-secondary" onclick="toggleTopSellingChart()">
+                            <i class="fas fa-chart-bar"></i> View Bar Chart
+                        </button>
+                    </div>
+                    <div id="topSellingTable">
+                        <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Qty Sold</th>
+                                <th>Sales Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($top_selling) > 0): ?>
+                                <?php foreach ($top_selling as $product): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($product['item_name']) ?></td>
+                                        <td><?= htmlspecialchars($product['category'] ?? 'N/A') ?></td>
+                                        <td><?= intval($product['total_qty_sold']) ?></td>
+                                        <td>₱<?= number_format($product['total_sales_value'], 2) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="4" class="no-data"><i class="fas fa-inbox"></i><p>No sales data available</p></td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                    </div>
+                    <div id="topSellingChart" style="display: none;">
+                        <canvas id="topSellingChartCanvas"></canvas>
+                    </div>
+                </div>
+
+                <div class="table-container highlight-panel">
+                    <div class="section-header">
+                        <h3>Bottom 10 Selling Products</h3>
+                        <button type="button" class="btn-secondary" onclick="toggleBottomSellingChart()">
+                            <i class="fas fa-chart-bar"></i> View Bar Chart
+                        </button>
+                    </div>
+                    <div id="bottomSellingTable">
+                        <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Qty Sold</th>
+                                <th>Sales Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (count($bottom_selling) > 0): ?>
+                                <?php foreach ($bottom_selling as $product): ?>
+                                    <tr>
+                                        <td><?= htmlspecialchars($product['item_name']) ?></td>
+                                        <td><?= htmlspecialchars($product['category'] ?? 'N/A') ?></td>
+                                        <td><?= intval($product['total_qty_sold']) ?></td>
+                                        <td>₱<?= number_format($product['total_sales_value'], 2) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="4" class="no-data"><i class="fas fa-inbox"></i><p>No sales data available</p></td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                    </div>
+                    <div id="bottomSellingChart" style="display: none;">
+                        <canvas id="bottomSellingChartCanvas"></canvas>
+                    </div>
                 </div>
             </div>
 
@@ -815,20 +977,24 @@ if (isset($_GET['edit_supplier'])) {
                     <table class="inventory-table">
                         <thead>
                             <tr>
-                                <th>Date Added</th>
+                                <th>Date & Time</th>
                                 <th>Item</th>
                                 <th>Category</th>
                                 <th>Quantity</th>
+                                <th>Reason</th>
+                                <th>Changed At</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (count($history_items) > 0): ?>
                                 <?php foreach ($history_items as $history): ?>
                                     <tr>
-                                        <td><?= date('M d, Y H:i', strtotime($history['date_added'])) ?></td>
+                                        <td><?= date('M d, Y H:i', strtotime($history['changed_at'])) ?></td>
                                         <td><?= htmlspecialchars($history['item_name']) ?></td>
-                                        <td><?= htmlspecialchars($history['category']) ?></td>
+                                        <td><?= htmlspecialchars($history['category'] ?? 'N/A') ?></td>
                                         <td><?= intval($history['quantity']) ?></td>
+                                        <td><?= htmlspecialchars($history['reason'] ?? 'N/A') ?></td>
+                                        <td><?= date('M d, Y H:i', strtotime($history['changed_at'])) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
@@ -977,10 +1143,35 @@ if (isset($_GET['edit_supplier'])) {
         <button type="button" class="toast-undo" aria-label="Undo delete">Undo</button>
     </div>
 
+    <!-- Profit Charts Modal -->
+    <div class="modal" id="profitChartsModal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3>Profit Margin Detailed Report</h3>
+                <button class="modal-close" onclick="closeProfitChartsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="chart-tabs">
+                    <button class="tab-btn active" onclick="showChartTab('bar')">Bar Chart</button>
+                    <button class="tab-btn" onclick="showChartTab('pie')">Pie Chart</button>
+                </div>
+                <div id="barChartTab" class="chart-tab">
+                    <canvas id="profitBarChart"></canvas>
+                </div>
+                <div id="pieChartTab" class="chart-tab" style="display: none;">
+                    <canvas id="profitPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
     <script>
         // Debug: Check if script is loading
         console.log('Inventory script loaded');
+        const profitMarginData = <?= json_encode($valuation_items, JSON_UNESCAPED_UNICODE) ?>;
+        const topSellingData = <?= json_encode($top_selling, JSON_UNESCAPED_UNICODE) ?>;
+        const bottomSellingData = <?= json_encode($bottom_selling, JSON_UNESCAPED_UNICODE) ?>;
 
         // Undo toast state (delay actual delete to allow undo)
         let _undoTimer = null;
@@ -1023,6 +1214,290 @@ if (isset($_GET['edit_supplier'])) {
                 const deleteBtn = document.getElementById('deleteConfirmBtn');
                 if (deleteBtn) deleteBtn.disabled = false;
             };
+        }
+
+        function exportProfitMarginCsv() {
+            if (!Array.isArray(profitMarginData) || profitMarginData.length === 0) {
+                alert('No profit margin data available to export.');
+                return;
+            }
+
+            const headers = ['Item', 'Category', 'Stock', 'Cost Value', 'Retail Value', 'Potential Profit', 'Margin (%)'];
+            const rows = profitMarginData.map(item => [
+                item.item_name || '',
+                item.category || '',
+                item.quantity_in_stock ?? 0,
+                Number(item.inventory_value || 0).toFixed(2),
+                Number(item.retail_value || 0).toFixed(2),
+                Number(item.profit_value || 0).toFixed(2),
+                Number(item.profit_margin || 0).toFixed(2)
+            ]);
+
+            const csvContent = [headers, ...rows].map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'profit_margin_details.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function toggleTopSellingChart() {
+            const table = document.getElementById('topSellingTable');
+            const chart = document.getElementById('topSellingChart');
+            const btn = event.target.closest('button');
+            const icon = btn.querySelector('i');
+
+            if (chart.style.display === 'none') {
+                chart.style.display = 'block';
+                table.style.display = 'none';
+                btn.innerHTML = '<i class="fas fa-table"></i> View Table';
+                renderTopSellingChart();
+            } else {
+                chart.style.display = 'none';
+                table.style.display = 'block';
+                btn.innerHTML = '<i class="fas fa-chart-bar"></i> View Bar Chart';
+            }
+        }
+
+        function toggleBottomSellingChart() {
+            const table = document.getElementById('bottomSellingTable');
+            const chart = document.getElementById('bottomSellingChart');
+            const btn = event.target.closest('button');
+            const icon = btn.querySelector('i');
+
+            if (chart.style.display === 'none') {
+                chart.style.display = 'block';
+                table.style.display = 'none';
+                btn.innerHTML = '<i class="fas fa-table"></i> View Table';
+                renderBottomSellingChart();
+            } else {
+                chart.style.display = 'none';
+                table.style.display = 'block';
+                btn.innerHTML = '<i class="fas fa-chart-bar"></i> View Bar Chart';
+            }
+        }
+
+        function renderTopSellingChart() {
+            const ctx = document.getElementById('topSellingChartCanvas').getContext('2d');
+            const labels = topSellingData.map(item => item.item_name);
+            const data = topSellingData.map(item => parseFloat(item.total_sales_value));
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Sales Value (₱)',
+                        data: data,
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₱' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Top 10 Best Selling Products by Sales Value'
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderBottomSellingChart() {
+            const ctx = document.getElementById('bottomSellingChartCanvas').getContext('2d');
+            const labels = bottomSellingData.map(item => item.item_name);
+            const data = bottomSellingData.map(item => parseFloat(item.total_sales_value));
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Sales Value (₱)',
+                        data: data,
+                        backgroundColor: 'rgba(231, 76, 60, 0.6)',
+                        borderColor: 'rgba(231, 76, 60, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₱' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Bottom 10 Selling Products by Sales Value'
+                        }
+                    }
+                }
+            });
+        }
+
+        function showProfitCharts(event) {
+            event.stopPropagation();
+            const modal = document.getElementById('profitChartsModal');
+            modal.style.display = 'block';
+            modal.style.opacity = '1';
+            modal.style.transition = 'opacity 0.25s ease';
+            showChartTab('bar');
+        }
+
+        function closeProfitChartsModal() {
+            const modal = document.getElementById('profitChartsModal');
+            modal.style.opacity = '0';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 250);
+        }
+
+        function showChartTab(tab) {
+            const barTab = document.getElementById('barChartTab');
+            const pieTab = document.getElementById('pieChartTab');
+            const barBtn = document.querySelector('.tab-btn[onclick*="bar"]');
+            const pieBtn = document.querySelector('.tab-btn[onclick*="pie"]');
+
+            if (tab === 'bar') {
+                barTab.style.display = 'block';
+                pieTab.style.display = 'none';
+                barBtn.classList.add('active');
+                pieBtn.classList.remove('active');
+                renderProfitBarChart();
+            } else {
+                barTab.style.display = 'none';
+                pieTab.style.display = 'block';
+                barBtn.classList.remove('active');
+                pieBtn.classList.add('active');
+                renderProfitPieChart();
+            }
+        }
+
+        function renderProfitBarChart() {
+            const ctx = document.getElementById('profitBarChart').getContext('2d');
+            const labels = profitMarginData.map(item => item.item_name);
+            const data = profitMarginData.map(item => parseFloat(item.profit_value));
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Profit Value (₱)',
+                        data: data,
+                        backgroundColor: 'rgba(46, 204, 113, 0.6)',
+                        borderColor: 'rgba(46, 204, 113, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₱' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Profit Values by Product'
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderProfitPieChart() {
+            const ctx = document.getElementById('profitPieChart').getContext('2d');
+            const labels = profitMarginData.map(item => item.item_name);
+            const data = profitMarginData.map(item => parseFloat(item.profit_value));
+
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(255, 205, 86, 0.6)',
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(153, 102, 255, 0.6)',
+                            'rgba(255, 159, 64, 0.6)',
+                            'rgba(199, 199, 199, 0.6)',
+                            'rgba(83, 102, 255, 0.6)',
+                            'rgba(255, 99, 255, 0.6)',
+                            'rgba(99, 255, 132, 0.6)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Profit Share by Product'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return context.label + ': ₱' + value.toLocaleString() + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function toggleSidebar() {
@@ -1598,6 +2073,7 @@ if (isset($_GET['edit_supplier'])) {
             const deleteModal = document.getElementById('deleteModal');
             const saveConfirmModal = document.getElementById('saveConfirmModal');
             const stockAlertModal = document.getElementById('stockAlertModal');
+            const profitChartsModal = document.getElementById('profitChartsModal');
 
             const clickedInsideModal = event.target.closest('.modal-content');
 
@@ -1610,6 +2086,7 @@ if (isset($_GET['edit_supplier'])) {
                 if (deleteModal && deleteModal.style.display === 'block') closeDeleteModal();
                 if (saveConfirmModal && saveConfirmModal.style.display === 'block') closeSaveConfirmModal();
                 if (stockAlertModal && stockAlertModal.style.display === 'block') closeStockAlertModal();
+                if (profitChartsModal && profitChartsModal.style.display === 'block') closeProfitChartsModal();
             }
         }
 
