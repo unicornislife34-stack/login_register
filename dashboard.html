@@ -1,8 +1,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>L LE JOSE - Sales Dashboard 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'poppins': ['Poppins', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -140,105 +152,121 @@
             position: relative;
         }
 
-        /* Responsive */
-        @media (max-width: 1200px) {
-            .charts-section {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 15px;
-            }
-
-            .title {
-                font-size: 36px;
-            }
-
-            .kpi-section {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 20px;
-            }
-
-            .kpi-card {
-                padding: 24px 20px;
-            }
-
-            .kpi-value {
-                font-size: 28px;
-            }
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
         }
     </style>
 </head>
-<body>
-    <div class="dashboard-container">
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen p-5">
+    <div class="max-w-7xl mx-auto">
         <!-- Header -->
-        <div class="header">
-            <h1 class="title">L LE JOSE</h1>
-            <div class="header-controls">
-                <select id="reportSelect" class="dropdown">
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent mb-3">L LE JOSE</h1>
+            <div class="flex justify-center items-center gap-5 mt-5">
+                <select id="reportSelect" class="bg-white border-2 border-gray-300 px-5 py-3 rounded-2xl text-base font-medium cursor-pointer shadow-md hover:shadow-lg transition-shadow">
                     <option value="sales_history.php">Sales Report</option>
                     <option value="inventory.php">Inventory Report</option>
                     <option value="employee.php">Employee Report</option>
                 </select>
-                <div class="year-highlight">2026</div>
+                <div class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-2xl text-lg font-semibold shadow-lg">2026</div>
             </div>
         </div>
 
         <!-- KPIs -->
-        <div class="kpi-section">
-            <div class="kpi-card">
-                <div class="kpi-value">₱576,210</div>
-                <div class="kpi-label">Gross Sales</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
+            <div class="bg-blue-50 border-2 border-blue-200 rounded-3xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow">
+                <div class="text-3xl font-bold text-blue-600 mb-2">₱576,210</div>
+                <div class="text-sm text-gray-600 font-medium uppercase tracking-wider">Gross Sales</div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-value">₱576,210</div>
-                <div class="kpi-label">Gross Profits</div>
+            <div class="bg-blue-50 border-2 border-blue-200 rounded-3xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow">
+                <div class="text-3xl font-bold text-blue-600 mb-2">₱576,210</div>
+                <div class="text-sm text-gray-600 font-medium uppercase tracking-wider">Gross Profits</div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-value">₱576,210</div>
-                <div class="kpi-label">Net Sales</div>
+            <div class="bg-blue-50 border-2 border-blue-200 rounded-3xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow">
+                <div class="text-3xl font-bold text-blue-600 mb-2">₱576,210</div>
+                <div class="text-sm text-gray-600 font-medium uppercase tracking-wider">Net Sales</div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-value">₱576,210</div>
-                <div class="kpi-label">Past Year Sales</div>
+            <div class="bg-blue-50 border-2 border-blue-200 rounded-3xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow">
+                <div class="text-3xl font-bold text-blue-600 mb-2">₱576,210</div>
+                <div class="text-sm text-gray-600 font-medium uppercase tracking-wider">Past Year Sales</div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-value growth">46%</div>
-                <div class="kpi-label">Sales Growth</div>
+            <div class="bg-green-50 border-2 border-green-200 rounded-3xl p-6 text-center shadow-lg hover:shadow-xl transition-shadow">
+                <div class="text-3xl font-bold text-green-600 mb-2">46%</div>
+                <div class="text-sm text-gray-600 font-medium uppercase tracking-wider">Sales Growth</div>
+            </div>
+        </div>
+
+        <!-- Slideshow/Carousel -->
+        <div class="mb-10">
+            <div class="relative overflow-hidden rounded-3xl shadow-lg bg-white">
+                <div class="carousel-container relative h-64 md:h-80">
+                    <div class="carousel-slide active bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white">
+                        <div class="text-center">
+                            <h3 class="text-2xl md:text-3xl font-bold mb-2">Welcome to L LE JOSE</h3>
+                            <p class="text-lg opacity-90">Your trusted partner in business management</p>
+                        </div>
+                    </div>
+                    <div class="carousel-slide bg-gradient-to-r from-green-500 to-teal-600 flex items-center justify-center text-white">
+                        <div class="text-center">
+                            <h3 class="text-2xl md:text-3xl font-bold mb-2">Track Your Sales</h3>
+                            <p class="text-lg opacity-90">Monitor performance with real-time analytics</p>
+                        </div>
+                    </div>
+                    <div class="carousel-slide bg-gradient-to-r from-orange-500 to-red-600 flex items-center justify-center text-white">
+                        <div class="text-center">
+                            <h3 class="text-2xl md:text-3xl font-bold mb-2">Manage Inventory</h3>
+                            <p class="text-lg opacity-90">Keep stock levels optimized and organized</p>
+                        </div>
+                    </div>
+                </div>
+                <button class="carousel-btn carousel-prev absolute left-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-2 text-white transition-all">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="carousel-btn carousel-next absolute right-4 top-1/2 transform -translate-y-1/2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full p-2 text-white transition-all">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <div class="carousel-indicators absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                    <div class="indicator w-3 h-3 rounded-full bg-white bg-opacity-50 cursor-pointer active"></div>
+                    <div class="indicator w-3 h-3 rounded-full bg-white bg-opacity-50 cursor-pointer"></div>
+                    <div class="indicator w-3 h-3 rounded-full bg-white bg-opacity-50 cursor-pointer"></div>
+                </div>
             </div>
         </div>
 
         <!-- Charts -->
-        <div class="charts-section">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
             <!-- Yearly Sales Line Chart -->
-            <div class="chart-card">
-                <h3 class="chart-title">Yearly Sales Trend</h3>
-                <div class="chart-container">
+            <div class="col-span-2 bg-white rounded-3xl p-8 shadow-lg h-96">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 text-center">Yearly Sales Trend</h3>
+                <div class="h-80">
                     <canvas id="yearlyChart"></canvas>
                 </div>
             </div>
 
             <!-- Daily Sales Bar Chart -->
-            <div class="chart-card">
-                <h3 class="chart-title">Daily Sales (Jan 2026)</h3>
-                <div class="chart-container">
+            <div class="bg-white rounded-3xl p-8 shadow-lg h-96">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 text-center">Daily Sales (Jan 2026)</h3>
+                <div class="h-80">
                     <canvas id="dailyChart"></canvas>
                 </div>
             </div>
 
             <!-- Budget Indicator -->
-            <div class="chart-card">
-                <h3 class="chart-title">Budget Completion</h3>
-                <div class="chart-container">
+            <div class="bg-white rounded-3xl p-8 shadow-lg h-96">
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 text-center">Budget Completion</h3>
+                <div class="h-80">
                     <canvas id="budgetChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
-    <script>
+    <footer class="bg-gray-800 text-white text-center py-4 mt-10">
+        <p class="text-sm">© 2026 L LE JOSE - Point of Sale System. All rights reserved.</p>
+    </footer>
+</body>
+</html>
         // Dashboard report dropdown navigation
         const reportSelect = document.getElementById('reportSelect');
         if (reportSelect) {
@@ -248,6 +276,43 @@
                 }
             });
         }
+
+        // Carousel functionality
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.carousel-slide');
+        const indicators = document.querySelectorAll('.indicator');
+        const prevBtn = document.querySelector('.carousel-prev');
+        const nextBtn = document.querySelector('.carousel-next');
+
+        function showSlide(index) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            indicators.forEach(indicator => indicator.classList.remove('active'));
+            
+            slides[index].classList.add('active');
+            indicators[index].classList.add('active');
+            currentSlide = index;
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        // Event listeners
+        if (nextBtn) nextBtn.addEventListener('click', nextSlide);
+        if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+        
+        indicators.forEach((indicator, index) => {
+            indicator.addEventListener('click', () => showSlide(index));
+        });
+
+        // Auto-play carousel
+        setInterval(nextSlide, 5000);
 
         // Yearly Sales Line Chart (2010-2019 trends, extended to 2026)
         const yearlyCtx = document.getElementById('yearlyChart').getContext('2d');

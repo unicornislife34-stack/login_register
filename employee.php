@@ -139,7 +139,9 @@ $employees = $result ? mysqli_fetch_all($result, MYSQLI_ASSOC) : [];
         .business-name {
             margin: 0;
             font-size: 1.35rem;
+            color: white;
             letter-spacing: 1px;
+            font-weight: 700;
         }
 
         .logout-btn {
@@ -161,12 +163,38 @@ $employees = $result ? mysqli_fetch_all($result, MYSQLI_ASSOC) : [];
             color: #667eea;
         }
 
+        .page-heading {
+            display: grid;
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #667eea;
+            color: #ffffff;
+            padding: 10px 16px;
+            border-radius: 999px;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 700;
+            box-shadow: 0 12px 28px rgba(102, 126, 234, 0.16);
+            transition: transform 0.15s ease, background 0.15s ease;
+            width: fit-content;
+        }
+
+        .back-btn:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+
         .topbar {
             display: grid;
             grid-template-columns: 1fr auto;
             gap: 18px;
             align-items: center;
-            margin-bottom: 26px;
         }
 
         .page-title p {
@@ -659,13 +687,14 @@ $employees = $result ? mysqli_fetch_all($result, MYSQLI_ASSOC) : [];
     </header>
 
     <div class="page-shell">
-        <button class="back-dashboard btn btn-secondary" onclick="window.location.href='admin_page.php'"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
-        <div class="topbar">
-            <div class="page-title">
-                <p>Employee Center</p>
-                <h1>Staff roster & payroll</h1>
-            </div>
-            <div class="actions">
+        <div class="page-heading">
+            <a href="admin_page.php" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <div class="topbar">
+                <div class="page-title">
+                    <p>Employee Center</p>
+                    <h1>Staff roster & payroll</h1>
+                </div>
+                <div class="actions">
                 <button class="btn btn-secondary" onclick="openEmployeeModal('add')">+ Add New Employee</button>
                 <button id="editButton" class="btn btn-primary btn-disabled" onclick="openEmployeeModal('edit')" disabled>Edit Selected</button>
                 <button id="deleteButton" class="btn btn-danger btn-disabled" onclick="openConfirmModal()" disabled>Delete Selected</button>

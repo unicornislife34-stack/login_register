@@ -14,7 +14,19 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'poppins': ['Poppins', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         * {
             margin: 0;
@@ -326,213 +338,37 @@ if (!isset($_SESSION['username']) || $_SESSION['role'] !== 'employee') {
 </head>
 <body>  
     <div class="container">
-        <div id="employee-menu" style="display: flex; flex-direction: column; gap: 20px;">
-            <div>
-                <h1>Welcome, <?= $_SESSION['name'] ?></h1>
-                <p class="subtitle">Choose an option to get started.</p>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <button id="attendance-menu-btn" class="btn-action btn-primary">Attendance</button>
-                <button id="pos-menu-btn" class="btn-action btn-secondary">POS System</button>
-            </div>
+            <div id="employee-menu" class="flex flex-col gap-6">
+                <div>
+                    <h1 class="text-2xl font-bold mb-2">Welcome, <?= $_SESSION['name'] ?></h1>
+                    <p class="text-gray-600 text-base leading-relaxed">Choose an option to get started.</p>
+                </div>
+                <div class="flex flex-col gap-3">
+    <button id="dashboard-menu-btn" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-4 rounded-xl text-base font-semibold cursor-pointer transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1" onclick="window.location.href='employee_dashboard.php'">
+                        <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                    </button>
+
+                    <button id="pos-menu-btn" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-4 rounded-xl text-base font-semibold cursor-pointer transition-all shadow-md hover:shadow-lg transform hover:-translate-y-1">
+                        <i class="fas fa-cash-register mr-2"></i>POS System
+                    </button>
         </div>
 
-        <div id="attendance-section" class="clock-section">
-            <div class="clock-header">
-                <h2>Attendance Clock</h2>
-            </div>
 
-            <div id="attendanceToast" class="notification-toast info">
-                <span id="toastMessage">Ready to track your shift.</span>
-            </div>
-
-            <div class="status-box">
-                <div class="status-label">Current Status</div>
-                <div id="attendanceStatus" class="status-value">Connecting...</div>
-                <div id="attendanceStatusMeta" class="status-detail">Checking your shift status.</div>
-            </div>
-
-            <div class="time-display">
-                <div class="time-label">Time Now</div>
-                <div id="live-clock">--:--:--</div>
-            </div>
-
-            <div class="action-buttons">
-                <button id="clock-in-btn" class="btn-accent"><span class="spinner"></span>Clock In</button>
-                <button id="clock-out-btn" class="btn-secondary"><span class="spinner"></span>Clock Out</button>
-                <button id="start-break-btn" class="btn-warning"><span class="spinner"></span>Start Break</button>
-                <button id="end-break-btn" class="btn-secondary"><span class="spinner"></span>End Break</button>
-            </div>
-
-            <div class="info-cards">
-                <div class="info-card">
-                    <div class="info-card-label">Work Duration</div>
-                    <div id="workDuration" class="info-card-value">0h 00m</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-card-label">Break Time</div>
-                    <div id="breakDuration" class="info-card-value">0m</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-card-label">Status</div>
-                    <div id="summaryStatus" class="info-card-value" style="font-size: 1rem; overflow: hidden; text-overflow: ellipsis;">Not clocked in</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-card-label">Overtime</div>
-                    <div id="summaryOvertime" class="info-card-value">0m</div>
-                </div>
-            </div>
-        </div>
 
         <button onclick="window.location.href='logout.php'" class="btn-logout">Logout</button>
     </div>
 
+    <footer class="bg-gray-800 text-white text-center py-4 mt-10">
+        <p class="text-sm">© 2026 L LE JOSE - Point of Sale System. All rights reserved.</p>
+    </footer>
+
 <script>
-let statusInterval;
-let clockInterval;
 
-function formatDuration(seconds) {
-    seconds = Math.max(0, Math.floor(seconds));
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const parts = [];
-    if (hours) parts.push(hours + 'h');
-    parts.push(minutes.toString().padStart(2, '0') + 'm');
-    return parts.join(' ');
-}
 
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('attendanceToast');
-    const text = document.getElementById('toastMessage');
-    toast.className = `notification-toast show ${type}`;
-    text.textContent = message;
-    clearTimeout(showToast.timeout);
-    showToast.timeout = setTimeout(() => {
-        toast.classList.remove('show');
-    }, 4000);
-}
 
-function setButtonVisibility(state) {
-    document.getElementById('clock-in-btn').disabled = !state.canClockIn;
-    document.getElementById('clock-out-btn').disabled = !state.canClockOut;
-    document.getElementById('start-break-btn').disabled = !state.canStartBreak;
-    document.getElementById('end-break-btn').disabled = !state.canEndBreak;
-}
-
-function updateDashboard(data) {
-    document.getElementById('attendanceStatus').textContent = data.status;
-    document.getElementById('attendanceStatusMeta').textContent = data.statusDetail;
-    document.getElementById('workDuration').textContent = data.workDuration;
-    document.getElementById('breakDuration').textContent = data.breakDuration;
-    document.getElementById('summaryStatus').textContent = data.summaryStatus;
-    document.getElementById('summaryOvertime').textContent = data.overtimeLabel;
-    setButtonVisibility(data.buttonState);
-}
-
-function refreshLiveClock() {
-    const now = new Date();
-    document.getElementById('live-clock').textContent = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-}
-
-function updateStatus(silent = false) {
-    fetch('fetch_status.php')
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            if (!silent) showToast(data.error, 'error');
-            return;
-        }
-        updateDashboard(data);
-    })
-    .catch(err => {
-        console.error('Status check failed:', err);
-        if (!silent) showToast('Unable to update attendance status.', 'error');
-    });
-}
-
-function sendAttendanceAction(action) {
-    const button = this;
-    if (!button) return;
-
-    // Store original content
-    const originalHTML = button.innerHTML;
-
-    // Disable button and show processing
-    button.disabled = true;
-    button.classList.add('processing');
-    button.innerHTML = '<span class="spinner"></span>Processing...';
-
-    fetch('attendance.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `action=${action}`
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        return response.text().then(text => {
-            console.log('Raw response:', text);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                throw new Error('Invalid JSON response: ' + text);
-            }
-        });
-    })
-    .then(data => {
-        if (data.success) {
-            showToast(data.message, 'success');
-            updateStatus(true);
-        } else {
-            showToast(data.message || 'Action failed', 'error');
-        }
-    })
-    .catch(err => {
-        console.error('Attendance action error:', err);
-        showToast('Failed to process request. Please try again.', 'error');
-    })
-    .finally(() => {
-        // Restore button state
-        button.disabled = false;
-        button.classList.remove('processing');
-        button.innerHTML = originalHTML;
-    });
-}
-
-function showAttendanceSection() {
-    document.getElementById('employee-menu').style.display = 'none';
-    document.getElementById('attendance-section').classList.add('active');
-    updateStatus();
-}
-
-function hideAttendanceSection() {
-    document.getElementById('attendance-section').classList.remove('active');
-    document.getElementById('employee-menu').style.display = 'flex';
-}
 
 window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('attendance-menu-btn').onclick = showAttendanceSection;
     document.getElementById('pos-menu-btn').onclick = () => window.location.href = 'pos.php';
-
-    // Attach event listeners using addEventListener for better control
-    document.getElementById('clock-in-btn').addEventListener('click', function() {
-        sendAttendanceAction.call(this, 'clock_in');
-    });
-    document.getElementById('clock-out-btn').addEventListener('click', function() {
-        sendAttendanceAction.call(this, 'clock_out');
-    });
-    document.getElementById('start-break-btn').addEventListener('click', function() {
-        sendAttendanceAction.call(this, 'start_break');
-    });
-    document.getElementById('end-break-btn').addEventListener('click', function() {
-        sendAttendanceAction.call(this, 'end_break');
-    });
-
-    refreshLiveClock();
-    clockInterval = setInterval(refreshLiveClock, 1000);
-    statusInterval = setInterval(() => updateStatus(true), 30000);
 });
 </script>
 </body>

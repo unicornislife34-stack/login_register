@@ -13,8 +13,20 @@ if (!isset($_SESSION['username'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - L LE JOSE POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'poppins': ['Poppins', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 <body class="admin-page">
     <div class="admin-wrapper">
@@ -24,20 +36,20 @@ if (!isset($_SESSION['username'])) {
                 <div class="logo-section">
                     <h1 class="business-name">L LE JOSE</h1>
                 </div>
-                <button class="logout-btn" onclick="window.location.href='logout.php'">
+                <a href="logout.php" class="logout-btn">
                     <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
+                </a>
             </div>
         </header>
 
         <!-- Main Content -->
         <main class="dashboard-container">
-            <div class="dashboard-title">
+            <div class="dashboard-title text-center">
                 <h2>ADMIN MANAGEMENT</h2>
             </div>
 
             <!-- Dashboard Grid -->
-            <div class="dashboard-grid">
+            <div class="dashboard-grid justify-center">
                 <!-- Inventory Card -->
                 <div class="dashboard-card inventory-card" onclick="window.location.href='inventory.php'">
                     <div class="card-icon">
@@ -89,6 +101,10 @@ if (!isset($_SESSION['username'])) {
             </div>
         </main>
     </div>
+
+    <footer class="bg-gray-800 text-white text-center py-4 mt-10">
+        <p class="text-sm">© 2026 L LE JOSE - Point of Sale System. All rights reserved.</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>

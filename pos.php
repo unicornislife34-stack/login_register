@@ -142,7 +142,19 @@ $lowStockCount = count($lowStockItems);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS System - Employee</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'poppins': ['Poppins', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 <body class="menu-page">
     <div class="pos-wrapper">
@@ -153,14 +165,16 @@ $lowStockCount = count($lowStockItems);
                     <h1>L LE JOSE</h1>
                 </div>
             </div>
-            <div class="pos-header-right">
+            <div class="flex items-center gap-3">
                 <?php if ($lowStockCount): ?>
-                    <span class="low-stock-pill">Low stock</span>
+                    <span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">Low stock</span>
                 <?php endif; ?>
-                <button type="button" class="pos-secondary-btn" onclick="document.getElementById('cartPanel').scrollIntoView({ behavior: 'smooth' });">
+                <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2" onclick="document.getElementById('cartPanel').scrollIntoView({ behavior: 'smooth' });">
                     <i class="fas fa-receipt"></i> Order
                 </button>
-                <a href="logout.php" class="pos-secondary-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                <a href="logout.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
             </div>
         </header>
 
@@ -209,10 +223,10 @@ $lowStockCount = count($lowStockItems);
                                     <?php endif; ?>
                                     <?php if (!empty($item['sizes'])): ?><p class="size">Sizes: <?= htmlspecialchars($item['sizes']) ?></p><?php endif; ?>
                                 </div>
-                                <div class="quantity-controls">
-                                    <button type="button" onclick="changeQuantity(<?= $item['id'] ?>, -1)">-</button>
-                                    <div class="quantity-value" id="qty-<?= $item['id'] ?>">1</div>
-                                    <button type="button" onclick="changeQuantity(<?= $item['id'] ?>, 1)">+</button>
+                                <div class="flex items-center justify-between gap-2 mb-3">
+                                    <button type="button" onclick="changeQuantity(<?= $item['id'] ?>, -1)" class="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-colors">-</button>
+                                    <div class="quantity-value bg-gray-100 border border-gray-300 px-3 py-1 rounded-lg min-w-[30px] text-center font-semibold" id="qty-<?= $item['id'] ?>">1</div>
+                                    <button type="button" onclick="changeQuantity(<?= $item['id'] ?>, 1)" class="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-colors">+</button>
                                 </div>
                                 <?php if (intval($item['stock_quantity']) > 0): ?>
                                     <button type="button" class="add-to-cart" onclick="addToCart(<?= $item['id'] ?>, <?= json_encode($item['item_name']) ?>, <?= $item['price'] ?>)">Add to Order</button>
