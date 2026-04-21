@@ -42,11 +42,52 @@ function formatAverageClockTime($secondsFromMidnight)
     return date('g:i A', $base);
 }
 
+function fetchOneAssocPrepared($conn, $sql, $types = '', $params = [])
+{
+    $stmt = mysqli_prepare($conn, $sql);
+    if (!$stmt) {
+        return null;
+    }
+
+    if ($types !== '' && !empty($params)) {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+    }
+
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+    mysqli_stmt_close($stmt);
+
+    return $row;
+}
+
+function fetchAllAssocPrepared($conn, $sql, $types = '', $params = [])
+{
+    $stmt = mysqli_prepare($conn, $sql);
+    if (!$stmt) {
+        return [];
+    }
+
+    if ($types !== '' && !empty($params)) {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+    }
+
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $rows = $result ? mysqli_fetch_all($result, MYSQLI_ASSOC) : [];
+    mysqli_stmt_close($stmt);
+
+    return $rows;
+}
+
 // Get employee details
 $username = $_SESSION['username'];
-$employeeQuery = "SELECT * FROM employee WHERE LOWER(TRIM(name)) = LOWER(TRIM('$username')) LIMIT 1";
-$employeeResult = mysqli_query($conn, $employeeQuery);
-$employee = mysqli_fetch_assoc($employeeResult);
+$employee = fetchOneAssocPrepared(
+    $conn,
+    "SELECT * FROM employee WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1",
+    's',
+    [$username]
+);
 
 if (!$employee) {
     $employee = ['name' => $username, 'role' => 'Staff Member', 'id' => 0];
@@ -56,9 +97,12 @@ if (!$employee) {
 $today = date('Y-m-d');
 $todayShiftStart = strtotime($today . sprintf(' %02d:%02d:00', $shiftStartHour, $shiftStartMinute));
 
-$attendanceQuery = "SELECT * FROM attendance WHERE employee_username = '{$username}' AND DATE(clock_in) = '$today' ORDER BY clock_in DESC LIMIT 1";
-$attendanceResult = mysqli_query($conn, $attendanceQuery);
-$todayAttendance = mysqli_fetch_assoc($attendanceResult);
+$todayAttendance = fetchOneAssocPrepared(
+    $conn,
+    "SELECT * FROM attendance WHERE employee_username = ? AND DATE(clock_in) = ? ORDER BY clock_in DESC LIMIT 1",
+    'ss',
+    [$username, $today]
+);
 
 $hasClockIn = $todayAttendance && !empty($todayAttendance['clock_in']);
 $hasClockOut = $todayAttendance && !empty($todayAttendance['clock_out']) && $todayAttendance['clock_out'] !== '0000-00-00 00:00:00';
@@ -152,38 +196,40 @@ $employeeCode = !empty($employee['id']) ? 'EM' . str_pad((string) $employee['id'
 // Weekly insights
 $weekStart = date('Y-m-d', strtotime('monday this week'));
 $weekEnd = date('Y-m-d', strtotime('sunday this week'));
-$weekQuery = "SELECT * FROM attendance WHERE employee_username = '{$username}' AND date BETWEEN '{$weekStart}' AND '{$weekEnd}' ORDER BY date ASC, clock_in ASC";
-$weekResult = mysqli_query($conn, $weekQuery);
+$weekRows = fetchAllAssocPrepared(
+    $conn,
+    "SELECT * FROM attendance WHERE employee_username = ? AND date BETWEEN ? AND ? ORDER BY date ASC, clock_in ASC",
+    'sss',
+    [$username, $weekStart, $weekEnd]
+);
 
 $dailyClockIns = [];
 $dailyWorkedSeconds = [];
 $dailyLateFlags = [];
 
-if ($weekResult) {
-    while ($weekRow = mysqli_fetch_assoc($weekResult)) {
-        $rowDate = $weekRow['date'];
-        $rowClockIn = !empty($weekRow['clock_in']) ? strtotime($weekRow['clock_in']) : false;
-        $rowClockOut = (!empty($weekRow['clock_out']) && $weekRow['clock_out'] !== '0000-00-00 00:00:00') ? strtotime($weekRow['clock_out']) : false;
-        $rowBreakTotal = isset($weekRow['break_total']) && is_numeric($weekRow['break_total']) ? (int) $weekRow['break_total'] : 0;
+foreach ($weekRows as $weekRow) {
+    $rowDate = $weekRow['date'];
+    $rowClockIn = !empty($weekRow['clock_in']) ? strtotime($weekRow['clock_in']) : false;
+    $rowClockOut = (!empty($weekRow['clock_out']) && $weekRow['clock_out'] !== '0000-00-00 00:00:00') ? strtotime($weekRow['clock_out']) : false;
+    $rowBreakTotal = isset($weekRow['break_total']) && is_numeric($weekRow['break_total']) ? (int) $weekRow['break_total'] : 0;
 
-        if ($rowClockIn) {
-            if (!isset($dailyClockIns[$rowDate]) || $rowClockIn < $dailyClockIns[$rowDate]) {
-                $dailyClockIns[$rowDate] = $rowClockIn;
-            }
-
-            $rowShiftStart = strtotime($rowDate . sprintf(' %02d:%02d:00', $shiftStartHour, $shiftStartMinute));
-            if (!isset($dailyLateFlags[$rowDate])) {
-                $dailyLateFlags[$rowDate] = $rowClockIn > $rowShiftStart;
-            }
+    if ($rowClockIn) {
+        if (!isset($dailyClockIns[$rowDate]) || $rowClockIn < $dailyClockIns[$rowDate]) {
+            $dailyClockIns[$rowDate] = $rowClockIn;
         }
 
-        if (!isset($dailyWorkedSeconds[$rowDate])) {
-            $dailyWorkedSeconds[$rowDate] = 0;
+        $rowShiftStart = strtotime($rowDate . sprintf(' %02d:%02d:00', $shiftStartHour, $shiftStartMinute));
+        if (!isset($dailyLateFlags[$rowDate])) {
+            $dailyLateFlags[$rowDate] = $rowClockIn > $rowShiftStart;
         }
+    }
 
-        if ($rowClockIn && $rowClockOut) {
-            $dailyWorkedSeconds[$rowDate] += max(0, $rowClockOut - $rowClockIn - $rowBreakTotal);
-        }
+    if (!isset($dailyWorkedSeconds[$rowDate])) {
+        $dailyWorkedSeconds[$rowDate] = 0;
+    }
+
+    if ($rowClockIn && $rowClockOut) {
+        $dailyWorkedSeconds[$rowDate] += max(0, $rowClockOut - $rowClockIn - $rowBreakTotal);
     }
 }
 
@@ -1047,19 +1093,19 @@ $lateStatusClass = !$hasClockIn ? 'detector-neutral' : ($isLate ? 'detector-dang
                 <i class="fas fa-house"></i>
                 <span>Dashboard</span>
             </a>
-            <a href="#attendanceHistorySection" class="nav-item">
-                <i class="fas fa-clock"></i>
-                <span>Attendance History</span>
+            <a href="pos.php" class="nav-item">
+                <i class="fas fa-cash-register"></i>
+                <span>POS System</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="my_payroll.php" class="nav-item">
                 <i class="fas fa-wallet"></i>
                 <span>My Payroll</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="request_time_off.php" class="nav-item">
                 <i class="fas fa-calendar-days"></i>
                 <span>Request Time Off</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="my_profile.php" class="nav-item">
                 <i class="fas fa-user"></i>
                 <span>My Profile</span>
             </a>
@@ -1269,11 +1315,15 @@ $lateStatusClass = !$hasClockIn ? 'detector-neutral' : ($isLate ? 'detector-dang
                                 </thead>
                                 <tbody>
                                     <?php
-                                    $historyQuery = "SELECT * FROM attendance WHERE employee_username = '$username' ORDER BY clock_in DESC LIMIT 20";
-                                    $historyResult = mysqli_query($conn, $historyQuery);
+                                    $historyRows = fetchAllAssocPrepared(
+                                        $conn,
+                                        "SELECT * FROM attendance WHERE employee_username = ? ORDER BY clock_in DESC LIMIT 20",
+                                        's',
+                                        [$username]
+                                    );
 
-                                    if ($historyResult && mysqli_num_rows($historyResult) > 0) {
-                                        while ($row = mysqli_fetch_assoc($historyResult)) {
+                                    if (!empty($historyRows)) {
+                                        foreach ($historyRows as $row) {
                                             $clockInTimestamp = !empty($row['clock_in']) ? strtotime($row['clock_in']) : false;
                                             $clockOutTimestamp = (!empty($row['clock_out']) && $row['clock_out'] !== '0000-00-00 00:00:00') ? strtotime($row['clock_out']) : false;
                                             $breakTotal = isset($row['break_total']) && is_numeric($row['break_total']) ? (int) $row['break_total'] : 0;

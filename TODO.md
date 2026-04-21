@@ -1,9 +1,6 @@
-# Inventory Fix Task - Fix 'inventory_id' column error
 
-## Steps to Complete:
+- [x] **2. Add error handling to inventory.php top/bottom selling queries**
 
-- [x] **1. User confirmed plan approval** (DB column added by user)
-- [ ] **2. Add error handling to inventory.php top/bottom selling queries**
 - [ ] **3. Update pos.php table creation to include inventory_id column**
 - [ ] **4. Add safeguards to sales_history.php and receipt.php queries**
 - [ ] **5. Test inventory.php loads without fatal error**

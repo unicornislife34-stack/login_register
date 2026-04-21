@@ -187,7 +187,7 @@ $lowStockCount = count($lowStockItems);
     <div class="pos-wrapper">
         <header class="pos-header">
             <div class="pos-header-left">
-                <a href="employee_page.php" class="pos-back"><i class="fas fa-arrow-left"></i></a>
+                <a href="employee_dashboard.php" class="pos-back"><i class="fas fa-arrow-left"></i></a>
                 <div class="pos-brand">
                     <h1>L LE JOSE</h1>
                 </div>

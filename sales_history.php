@@ -238,9 +238,14 @@ if (isset($_GET['order_id'])) {
         <main class="dashboard-container">
             <div class="content-header">
                 <h2>Sales History</h2>
-                <a href="menu.php" class="btn-primary">
-                    <i class="fas fa-plus"></i> New Order
-                </a>
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    <a href="menu.php" class="btn-primary">
+                        <i class="fas fa-plus"></i> New Order
+                    </a>
+                    <a href="admin_page.php" class="btn-primary" style="background:#8b5cf6;">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
             </div>
 
             <div class="search-filter-bar">

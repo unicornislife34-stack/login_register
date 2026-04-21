@@ -33,6 +33,59 @@ $history_table_sql = "CREATE TABLE IF NOT EXISTS inventory_history (
 )";
 mysqli_query($conn, $history_table_sql);
 
+function getTableColumns($conn, $table_name) {
+    $columns = [];
+    $result = mysqli_query($conn, "SHOW COLUMNS FROM `$table_name`");
+    if (!$result) {
+        return $columns;
+    }
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $columns[] = $row['Field'];
+    }
+
+    return $columns;
+}
+
+function hasAllColumns($columns, $required_columns) {
+    foreach ($required_columns as $column) {
+        if (!in_array($column, $columns, true)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function getInventoryHistoryQuery($history_columns, $history_search) {
+    if (hasAllColumns($history_columns, ['item_name', 'category', 'quantity', 'reason', 'changed_at'])) {
+        $history_query = "SELECT id, item_name, category, quantity, reason, changed_at FROM inventory_history WHERE 1=1";
+        if ($history_search) {
+            $history_query .= " AND item_name LIKE '%$history_search%'";
+        }
+
+        return $history_query . " ORDER BY changed_at DESC LIMIT 200";
+    }
+
+    $history_query = "
+        SELECT
+            h.id,
+            COALESCE(i.item_name, CONCAT('Item #', h.item_id)) AS item_name,
+            i.category AS category,
+            COALESCE(h.new_quantity, h.old_quantity, 0) AS quantity,
+            h.action AS reason,
+            h.timestamp AS changed_at
+        FROM inventory_history h
+        LEFT JOIN inventory i ON i.id = h.item_id
+        WHERE 1=1
+    ";
+    if ($history_search) {
+        $history_query .= " AND COALESCE(i.item_name, CONCAT('Item #', h.item_id)) LIKE '%$history_search%'";
+    }
+
+    return $history_query . " ORDER BY h.timestamp DESC LIMIT 200";
+}
+
 function logInventoryHistory($conn, $inventory_id, $action, $item_name, $category = null, $quantity = 0, $reason = null) {
     $inventory_id = intval($inventory_id);
     $action = mysqli_real_escape_string($conn, $action);
@@ -40,9 +93,29 @@ function logInventoryHistory($conn, $inventory_id, $action, $item_name, $categor
     $category = mysqli_real_escape_string($conn, $category);
     $quantity = intval($quantity);
     $reason = mysqli_real_escape_string($conn, $reason);
+    $history_columns = getTableColumns($conn, 'inventory_history');
 
-    $sql = "INSERT INTO inventory_history (inventory_id, action, item_name, category, quantity, reason) VALUES ($inventory_id, '$action', '$item_name', '$category', $quantity, '$reason')";
-    mysqli_query($conn, $sql);
+    if (hasAllColumns($history_columns, ['inventory_id', 'item_name', 'category', 'quantity', 'reason'])) {
+        $sql = "INSERT INTO inventory_history (inventory_id, action, item_name, category, quantity, reason) VALUES ($inventory_id, '$action', '$item_name', '$category', $quantity, '$reason')";
+        mysqli_query($conn, $sql);
+        return;
+    }
+
+    if (hasAllColumns($history_columns, ['item_id', 'old_quantity', 'new_quantity', 'user', 'timestamp'])) {
+        $changed_by = isset($_SESSION['username']) ? mysqli_real_escape_string($conn, $_SESSION['username']) : 'system';
+        $old_quantity = 'NULL';
+        $new_quantity = $quantity;
+
+        if ($action === 'add') {
+            $old_quantity = 0;
+        } elseif ($action === 'delete') {
+            $old_quantity = $quantity;
+            $new_quantity = 0;
+        }
+
+        $sql = "INSERT INTO inventory_history (item_id, action, old_quantity, new_quantity, old_price, new_price, user) VALUES ($inventory_id, '$action', $old_quantity, $new_quantity, NULL, NULL, '$changed_by')";
+        mysqli_query($conn, $sql);
+    }
 }
 
 // Handle Add/Edit/Delete Item
@@ -361,22 +434,23 @@ foreach ($valuation_items as &$valuation_item) {
 }
 unset($valuation_item);
 
-$top_selling_query = "SELECT i.id, i.item_name, i.category, COALESCE(SUM(oi.qty), 0) as total_qty_sold, COALESCE(SUM(oi.subtotal), 0) as total_sales_value FROM inventory i LEFT JOIN order_items oi ON oi.inventory_id = i.id GROUP BY i.id ORDER BY total_qty_sold DESC, total_sales_value DESC LIMIT 10";
-$top_selling_result = mysqli_query($conn, $top_selling_query);
-if (!$top_selling_result) {
-    error_log("Top selling query failed: " . mysqli_error($conn));
-    $top_selling = [];
-} else {
+$top_selling_query = "SELECT i.id, i.item_name, i.category, COALESCE(SUM(oi.qty), 0) as total_qty_sold, COALESCE(SUM(oi.subtotal), 0) as total_sales_value FROM inventory i LEFT JOIN order_items oi ON i.id = oi.inventory_id GROUP BY i.id HAVING total_qty_sold > 0 ORDER BY total_qty_sold DESC, total_sales_value DESC LIMIT 10";
+
+$top_selling_result = @mysqli_query($conn, $top_selling_query);
+$top_selling = [];
+if ($top_selling_result !== false) {
     $top_selling = mysqli_fetch_all($top_selling_result, MYSQLI_ASSOC);
+} else {
+    error_log("Top selling query failed: " . mysqli_error($conn));
 }
 
-$bottom_selling_query = "SELECT i.id, i.item_name, i.category, COALESCE(SUM(oi.qty), 0) as total_qty_sold, COALESCE(SUM(oi.subtotal), 0) as total_sales_value FROM inventory i LEFT JOIN order_items oi ON oi.inventory_id = i.id GROUP BY i.id ORDER BY total_qty_sold ASC, total_sales_value ASC LIMIT 10";
-$bottom_selling_result = mysqli_query($conn, $bottom_selling_query);
-if (!$bottom_selling_result) {
-    error_log("Bottom selling query failed: " . mysqli_error($conn));
-    $bottom_selling = [];
-} else {
+$bottom_selling_query = "SELECT i.id, i.item_name, i.category, COALESCE(SUM(oi.qty), 0) as total_qty_sold, COALESCE(SUM(oi.subtotal), 0) as total_sales_value FROM inventory i LEFT JOIN order_items oi ON i.id = oi.inventory_id GROUP BY i.id HAVING total_qty_sold > 0 ORDER BY total_qty_sold ASC, total_sales_value ASC LIMIT 10";
+$bottom_selling_result = @mysqli_query($conn, $bottom_selling_query);
+$bottom_selling = [];
+if ($bottom_selling_result !== false) {
     $bottom_selling = mysqli_fetch_all($bottom_selling_result, MYSQLI_ASSOC);
+} else {
+    error_log("Bottom selling query failed: " . mysqli_error($conn));
 }
 
 $low_stock_count = 0;
@@ -398,13 +472,10 @@ $suppliers = mysqli_fetch_all($supplier_result, MYSQLI_ASSOC);
 
 // Inventory history search
 $history_search = isset($_GET['history_search']) ? mysqli_real_escape_string($conn, $_GET['history_search']) : '';
-$history_query = "SELECT id, inventory_id, action, item_name, category, quantity, reason, changed_at FROM inventory_history WHERE 1=1";
-if ($history_search) {
-    $history_query .= " AND item_name LIKE '%$history_search%'";
-}
-$history_query .= " ORDER BY changed_at DESC LIMIT 200";
+$history_columns = getTableColumns($conn, 'inventory_history');
+$history_query = getInventoryHistoryQuery($history_columns, $history_search);
 $history_result = mysqli_query($conn, $history_query);
-$history_items = mysqli_fetch_all($history_result, MYSQLI_ASSOC);
+$history_items = $history_result ? mysqli_fetch_all($history_result, MYSQLI_ASSOC) : [];
 
 // Prepare edit item data if requested (pre-fill the modal form)
 $edit_item = null;
