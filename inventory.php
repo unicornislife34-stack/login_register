@@ -363,11 +363,21 @@ unset($valuation_item);
 
 $top_selling_query = "SELECT i.id, i.item_name, i.category, COALESCE(SUM(oi.qty), 0) as total_qty_sold, COALESCE(SUM(oi.subtotal), 0) as total_sales_value FROM inventory i LEFT JOIN order_items oi ON oi.inventory_id = i.id GROUP BY i.id ORDER BY total_qty_sold DESC, total_sales_value DESC LIMIT 10";
 $top_selling_result = mysqli_query($conn, $top_selling_query);
-$top_selling = mysqli_fetch_all($top_selling_result, MYSQLI_ASSOC);
+if (!$top_selling_result) {
+    error_log("Top selling query failed: " . mysqli_error($conn));
+    $top_selling = [];
+} else {
+    $top_selling = mysqli_fetch_all($top_selling_result, MYSQLI_ASSOC);
+}
 
 $bottom_selling_query = "SELECT i.id, i.item_name, i.category, COALESCE(SUM(oi.qty), 0) as total_qty_sold, COALESCE(SUM(oi.subtotal), 0) as total_sales_value FROM inventory i LEFT JOIN order_items oi ON oi.inventory_id = i.id GROUP BY i.id ORDER BY total_qty_sold ASC, total_sales_value ASC LIMIT 10";
 $bottom_selling_result = mysqli_query($conn, $bottom_selling_query);
-$bottom_selling = mysqli_fetch_all($bottom_selling_result, MYSQLI_ASSOC);
+if (!$bottom_selling_result) {
+    error_log("Bottom selling query failed: " . mysqli_error($conn));
+    $bottom_selling = [];
+} else {
+    $bottom_selling = mysqli_fetch_all($bottom_selling_result, MYSQLI_ASSOC);
+}
 
 $low_stock_count = 0;
 foreach ($items as $item) {

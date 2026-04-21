@@ -1,7 +1,18 @@
-# Task: Link employee_page.php Attendance button to employee_dashboard.php
+# Inventory Fix Task - Fix 'inventory_id' column error
 
-## Steps:
-- [x] Step 1: Edit employee_page.php - Remove inline attendance-section HTML, related JS functions (showAttendanceSection, hideAttendanceSection, attendance handlers, intervals), update Attendance button onclick to `window.location.href = 'employee_dashboard.php'`
-- [x] Step 2: (Optional) Tweak employee_dashboard.php sidebar nav to make Attendance active/link self (skipped as basic linking complete)
-- [x] Step 3: Test navigation and functionality (verified via code review: Attendance button now links to employee_dashboard.php)
-- [x] Step 4: Complete task
+## Steps to Complete:
+
+- [x] **1. User confirmed plan approval** (DB column added by user)
+- [ ] **2. Add error handling to inventory.php top/bottom selling queries**
+- [ ] **3. Update pos.php table creation to include inventory_id column**
+- [ ] **4. Add safeguards to sales_history.php and receipt.php queries**
+- [ ] **5. Test inventory.php loads without fatal error**
+- [ ] **6. Verify POS checkout creates order_items with inventory_id**
+- [ ] **7. Confirm top/bottom selling sections show data (or empty gracefully)**
+- [ ] **8. Complete task**
+
+## Current Status: 
+Proceeding with code safeguards since user ran DB fix.
+
+**Next:** Update inventory.php with error handling.
+
